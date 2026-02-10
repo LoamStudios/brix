@@ -33,6 +33,7 @@ defmodule Brix.Page do
   @doc """
   Returns true if the page is published (published_at is set and not in the future).
   """
+  @spec published?(t()) :: boolean()
   def published?(%__MODULE__{published_at: nil}), do: false
 
   def published?(%__MODULE__{published_at: published_at}) do
@@ -45,6 +46,7 @@ defmodule Brix.Page do
   HTML tags are stripped from richtext fields before matching.
   Case-insensitive. Blank queries match everything.
   """
+  @spec matches?(t(), String.t() | nil) :: boolean()
   def matches?(%__MODULE__{} = _page, query) when query in ["", nil], do: true
 
   def matches?(%__MODULE__{} = page, query) when is_binary(query) do
@@ -57,6 +59,7 @@ defmodule Brix.Page do
   truncated to `length` characters (default 200). HTML tags are
   stripped and whitespace is normalized. Appends "…" when truncated.
   """
+  @spec excerpt(t(), non_neg_integer()) :: String.t()
   def excerpt(%__MODULE__{} = page, length \\ 200) do
     text =
       page.sections

@@ -6,6 +6,11 @@ defmodule Brix.Render do
 
   use Phoenix.Component
 
+  @doc """
+  Renders a list of sections by dispatching each to the corresponding
+  function component in `module`. The component function name matches
+  the section's template name.
+  """
   attr :sections, :list, required: true
   attr :module, :atom, required: true
 
@@ -17,6 +22,10 @@ defmodule Brix.Render do
     """
   end
 
+  @doc """
+  Renders a layout by dispatching its header sections, yielding the inner block,
+  then dispatching its footer sections.
+  """
   attr :layout, :map, required: true
   attr :module, :atom, required: true
   slot :inner_block, required: true
@@ -49,6 +58,7 @@ defmodule Brix.Render do
   @doc """
   Resolves a media slug to its serving path.
   """
+  @spec media_url(String.t()) :: String.t()
   def media_url(slug) do
     case Brix.get_media(slug) do
       {:ok, media} -> "/content/media/" <> media.path

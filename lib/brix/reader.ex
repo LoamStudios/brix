@@ -9,6 +9,8 @@ defmodule Brix.Reader do
 
   # --- Site ---
 
+  @doc "Reads `site.yml` from the content directory and returns a `Brix.Site` struct."
+  @spec read_site(String.t()) :: {:ok, Brix.Site.t()} | {:error, term()}
   def read_site(content_dir) do
     path = Path.join(content_dir, "site.yml")
 
@@ -33,6 +35,8 @@ defmodule Brix.Reader do
 
   # --- Authors ---
 
+  @doc "Reads all author YAML files from `authors/` and returns a sorted list of `Brix.Author` structs."
+  @spec read_authors(String.t()) :: [Brix.Author.t()]
   def read_authors(content_dir) do
     content_dir
     |> Path.join("authors/*.yml")
@@ -57,6 +61,8 @@ defmodule Brix.Reader do
 
   # --- Tags ---
 
+  @doc "Reads all tag YAML files from `tags/` and returns a sorted list of `Brix.Tag` structs."
+  @spec read_tags(String.t()) :: [Brix.Tag.t()]
   def read_tags(content_dir) do
     content_dir
     |> Path.join("tags/*.yml")
@@ -77,6 +83,8 @@ defmodule Brix.Reader do
 
   # --- Media ---
 
+  @doc "Reads all media YAML files from `media/` and returns a sorted list of `Brix.Media` structs."
+  @spec read_media(String.t()) :: [Brix.Media.t()]
   def read_media(content_dir) do
     content_dir
     |> Path.join("media/*.yml")
@@ -101,6 +109,8 @@ defmodule Brix.Reader do
 
   # --- Shared Sections ---
 
+  @doc "Reads all shared section YAML files from `shared_sections/` and returns a sorted list."
+  @spec read_shared_sections(String.t()) :: [Brix.SharedSection.t()]
   def read_shared_sections(content_dir) do
     content_dir
     |> Path.join("shared_sections/*.yml")
@@ -122,6 +132,8 @@ defmodule Brix.Reader do
 
   # --- Collections ---
 
+  @doc "Reads all collection YAML files from `collections/` and returns a sorted list."
+  @spec read_collections(String.t()) :: [Brix.Collection.t()]
   def read_collections(content_dir) do
     content_dir
     |> Path.join("collections/*.yml")
@@ -160,6 +172,8 @@ defmodule Brix.Reader do
 
   # --- Section Templates ---
 
+  @doc "Reads all section template YAML files from `templates/sections/` and returns a sorted list."
+  @spec read_section_templates(String.t()) :: [Brix.SectionTemplate.t()]
   def read_section_templates(content_dir) do
     content_dir
     |> Path.join("templates/sections/*.yml")
@@ -188,6 +202,12 @@ defmodule Brix.Reader do
 
   # --- Sections ---
 
+  @doc """
+  Reads all sections from a directory. Supports `.yml`, standalone `.md`, and
+  mixed `.field.md` files (where a markdown file provides a single field value
+  that is merged into its companion `.yml` section). Returns sections sorted by position.
+  """
+  @spec read_sections(String.t()) :: [Brix.Section.t()]
   def read_sections(sections_dir) do
     if File.dir?(sections_dir) do
       yml_files = Path.wildcard(Path.join(sections_dir, "*.yml"))
@@ -296,6 +316,8 @@ defmodule Brix.Reader do
 
   # --- Layouts ---
 
+  @doc "Reads all layout YAML files from `layouts/` and returns a sorted list of `Brix.Layout` structs."
+  @spec read_layouts(String.t()) :: [Brix.Layout.t()]
   def read_layouts(content_dir) do
     content_dir
     |> Path.join("layouts/*.yml")
@@ -337,6 +359,8 @@ defmodule Brix.Reader do
 
   # --- Pages ---
 
+  @doc "Reads all page directories from `pages/` and returns a sorted list of `Brix.Page` structs."
+  @spec read_pages(String.t()) :: [Brix.Page.t()]
   def read_pages(content_dir) do
     pages_dir = Path.join(content_dir, "pages")
 
@@ -444,6 +468,7 @@ defmodule Brix.Reader do
   Resolves shared section references in a list of sections.
   Takes a map of shared section name => %SharedSection{}.
   """
+  @spec resolve_sections([Brix.Section.t()], %{String.t() => Brix.SharedSection.t()}) :: [Brix.Section.t()]
   def resolve_sections(sections, shared_map) do
     Enum.map(sections, fn %Section{} = section ->
       case section.fields do
@@ -468,6 +493,7 @@ defmodule Brix.Reader do
   Parses a compact ISO timestamp directory name like "20241001T080000Z"
   into a DateTime. Returns nil if the format doesn't match.
   """
+  @spec parse_compact_iso(String.t() | nil) :: DateTime.t() | nil
   def parse_compact_iso(nil), do: nil
 
   def parse_compact_iso(name) when is_binary(name) do
@@ -486,6 +512,7 @@ defmodule Brix.Reader do
   @doc """
   Formats a DateTime as a compact ISO string like "20241001T080000Z".
   """
+  @spec format_compact_iso(DateTime.t()) :: String.t()
   def format_compact_iso(%DateTime{} = dt) do
     dt
     |> DateTime.truncate(:second)

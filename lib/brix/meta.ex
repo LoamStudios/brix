@@ -9,6 +9,7 @@ defmodule Brix.Meta do
 
   Supported fields: `:title`, `:description`, `:og_title`, `:og_description`, `:og_image`.
   """
+  @spec field(Brix.Page.t() | Brix.Collection.t(), Brix.Site.t(), atom()) :: String.t() | nil
   def field(resource, site, :title) do
     resource.meta_title || display_name(resource) || site.meta_title || site.name
   end
