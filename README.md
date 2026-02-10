@@ -1,21 +1,452 @@
 # Brix
 
-**TODO: Add description**
+A structured content layer for Phoenix LiveView apps. Write content as YAML and Markdown files, Brix validates, loads, and serves it.
 
-## Installation
+No GUI. No database (yet). Files are the authoring interface.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `brix` to your list of dependencies in `mix.exs`:
+## Setup
 
 ```elixir
-def deps do
-  [
-    {:brix, "~> 0.1.0"}
-  ]
+# mix.exs
+{:brix, path: "../brix"}   # local during dev
+
+# config/config.exs
+config :brix, store: Brix.Store.Filesystem
+
+# application.ex
+children = [
+  {Brix.Store.Filesystem, content_dir: Path.expand("priv/content")}
+]
+```
+
+## Content directory
+
+```
+priv/content/
+├── site.yml
+├── authors/
+│   └── maya.yml
+├── tags/
+│   └── coffee.yml
+├── media/
+│   ├── headshot.yml
+│   └── files/
+│       └── headshot.jpg
+├── templates/
+│   └── sections/
+│       ├── hero.yml
+│       └── richtext.yml
+├── layouts/
+│   └── default.yml
+├── shared_sections/
+│   ├── main-nav.yml
+│   └── site-footer.yml
+├── collections/
+│   └── blog.yml
+└── pages/
+    ├── index/
+    │   ├── page.yml
+    │   └── sections/
+    │       ├── 01-hero.yml
+    │       └── 02-intro.md
+    └── blog/
+        └── morning-ritual/
+            ├── page.yml
+            └── sections/
+                ├── 01-hero.yml
+                └── 02-body.md
+```
+
+## File formats
+
+### site.yml
+
+```yaml
+name: Ember & Bloom
+tagline: Coffee worth slowing down for
+meta_title: Ember & Bloom | Specialty Coffee
+meta_description: A neighborhood coffee shop.
+domain: emberandbloom.coffee
+```
+
+### authors/maya.yml
+
+Slug is derived from the filename.
+
+```yaml
+name: Maya Chen
+bio: Founder and head roaster.
+avatar: headshot          # references media slug
+url: https://example.com
+```
+
+### tags/coffee.yml
+
+```yaml
+display_name: Coffee
+```
+
+### media/headshot.yml
+
+```yaml
+alt: Photo of Maya
+caption: At the roaster
+content_type: image/jpeg
+path: files/headshot.jpg   # relative to media/
+```
+
+### templates/sections/hero.yml
+
+Defines the field contract for a section type. The validator checks content against these.
+
+```yaml
+fields:
+  heading:
+    type: string
+    required: true
+  subheading:
+    type: string
+  image:
+    type: media
+```
+
+Supported field types: `string`, `richtext`, `media`, `url`, `integer`, `boolean`, `list`, `map`.
+
+### layouts/default.yml
+
+Layouts define header and footer sections that wrap page content. Can reference shared sections or define sections inline.
+
+```yaml
+header_sections:
+  - shared_section: main-nav
+footer_sections:
+  - shared_section: site-footer
+```
+
+Or inline:
+
+```yaml
+header_sections:
+  - template: nav
+    fields:
+      links:
+        - label: Home
+          url: /
+footer_sections:
+  - template: footer
+    fields:
+      copyright: "2026"
+```
+
+### shared_sections/main-nav.yml
+
+Reusable content blocks. Define once, reference from layouts or page sections by name.
+
+```yaml
+template: nav
+fields:
+  links:
+    - label: Home
+      url: /
+    - label: About
+      url: /about
+```
+
+### collections/blog.yml
+
+Named page groupings with filters and sorting.
+
+```yaml
+name: Blog
+filters:
+  prefix: /blog/
+sort_by: slug
+sort_direction: asc
+meta_title: Blog | Ember & Bloom
+meta_description: Thoughts on coffee and craft.
+```
+
+Filter keys: `prefix`, `tag`, `author`. Sort fields: `slug`, `title`.
+
+### pages/index/page.yml
+
+Page slug is derived from directory path (`pages/index/` → `/`, `pages/blog/hello/` → `/blog/hello`). Can be overridden with `slug:`.
+
+```yaml
+title: Home
+layout: default
+meta_title: Ember & Bloom | Home
+meta_description: Specialty coffee in SE Portland.
+authors: [maya]
+tags: [coffee]
+published_at: "2024-03-15T09:00:00Z"
+slug_history:
+  - /old-home-url
+```
+
+`published_at` controls draft/published status:
+- Absent or `null` → draft
+- Future datetime → scheduled (draft until that time)
+- Past datetime → published
+
+`slug_history` enables redirect lookups for old URLs.
+
+### Page sections
+
+Sections live in `pages/*/sections/`. Filename prefix sets order: `01-hero.yml` before `02-body.md`.
+
+**YAML sections** — structured data:
+
+```yaml
+template: hero
+fields:
+  heading: Hello, I'm Maya
+  subheading: I roast coffee
+  image: headshot
+```
+
+**Markdown sections** — long-form content with frontmatter:
+
+```markdown
+---
+template: richtext
+---
+
+This is the about section with **bold** and *italic*.
+```
+
+The markdown body becomes the `body` field, converted to HTML at load time.
+
+**Shared section references** — reuse a shared section:
+
+```yaml
+shared_section: main-nav
+```
+
+## API
+
+### Core
+
+```elixir
+# Site
+Brix.get_site()
+# => %Brix.Site{name: "Ember & Bloom", ...}
+
+# Pages
+Brix.get_page("/blog/morning-ritual")
+# => {:ok, %Brix.Page{title: "The Morning Ritual", sections: [...], ...}}
+
+Brix.list_pages()
+# => [%Brix.Page{}, ...]
+
+# Filtered
+Brix.list_pages(tag: "coffee")
+Brix.list_pages(author: "maya")
+Brix.list_pages(prefix: "/blog/")
+Brix.list_pages(status: :published)
+Brix.list_pages(status: :draft)
+Brix.list_pages(tag: "coffee", prefix: "/blog/", status: :published)
+
+# Layouts
+Brix.get_layout("default")
+# => {:ok, %Brix.Layout{header_sections: [...], footer_sections: [...]}}
+
+# Authors, Tags, Media
+Brix.get_author("maya")
+Brix.list_authors()
+Brix.get_tag("coffee")
+Brix.list_tags()
+Brix.get_media("headshot")
+Brix.list_media()
+
+# Section templates
+Brix.get_section_template("hero")
+Brix.list_section_templates()
+```
+
+### Collections
+
+```elixir
+Brix.list_collections()
+# => [%Brix.Collection{slug: "blog", name: "Blog", ...}, ...]
+
+{:ok, blog} = Brix.get_collection("blog")
+
+blog
+|> Brix.list_collection_pages()
+|> Enum.map(& &1.title)
+# => ["The Morning Ritual"]
+```
+
+### Shared sections
+
+```elixir
+Brix.list_shared_sections()
+# => [%Brix.SharedSection{name: "main-nav", template: "nav", ...}, ...]
+
+Brix.get_shared_section("main-nav")
+# => {:ok, %Brix.SharedSection{...}}
+```
+
+### Drafts and publishing
+
+```elixir
+# Clock-aware: pages with published_at in the future are still drafts
+Brix.list_pages(status: :published)    # published_at <= now
+Brix.list_pages(status: :draft)        # published_at is nil or in the future
+
+# Check a single page
+{:ok, page} = Brix.get_page("/blog/upcoming")
+Brix.Page.published?(page)
+# => false (if published_at is in the future)
+```
+
+### Slug redirects
+
+```elixir
+# When a page has slug_history entries, old slugs resolve to the current one
+Brix.find_redirect("/about-us")
+# => {:ok, "/about"}
+
+Brix.find_redirect("/nonexistent")
+# => :error
+```
+
+### SEO metadata with fallbacks
+
+```elixir
+site = Brix.get_site()
+{:ok, page} = Brix.get_page("/careers")
+
+Brix.Meta.title(page, site)
+# => page.meta_title || page.title || site.meta_title || site.name
+
+Brix.Meta.description(page, site)
+# => page.meta_description || site.meta_description
+
+Brix.Meta.og_title(page, site)
+# => page.og_title || Meta.title(page, site)
+
+Brix.Meta.og_image(page, site)
+# => page.og_image || site.og_image
+```
+
+## Rendering in LiveView
+
+### 1. Define section components
+
+One function per section template name. All fields arrive in `@fields` as a string-keyed map.
+
+```elixir
+defmodule MyAppWeb.Sections do
+  use Phoenix.Component
+  import Phoenix.HTML, only: [raw: 1]
+
+  def hero(assigns) do
+    ~H"""
+    <section class="hero">
+      <h1>{@fields["heading"]}</h1>
+      <p :if={@fields["subheading"]}>{@fields["subheading"]}</p>
+      <img :if={@fields["image"]} src={Brix.Render.media_url(@fields["image"])} />
+    </section>
+    """
+  end
+
+  def richtext(assigns) do
+    ~H"""
+    <div class="prose">{raw(@fields["body"])}</div>
+    """
+  end
+
+  def nav(assigns) do
+    ~H"""
+    <nav>
+      <a :for={link <- @fields["links"]} href={link["url"]}>{link["label"]}</a>
+    </nav>
+    """
+  end
+
+  def footer(assigns) do
+    ~H"""
+    <footer>&copy; {@fields["copyright"]}</footer>
+    """
+  end
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/brix>.
+### 2. LiveView
 
+```elixir
+defmodule MyAppWeb.PageLive do
+  use MyAppWeb, :live_view
+
+  def handle_params(params, _uri, socket) do
+    slug = case params do
+      %{"slug" => parts} -> "/" <> Enum.join(parts, "/")
+      _ -> "/"
+    end
+
+    case Brix.get_page(slug) do
+      {:ok, page} ->
+        {:ok, layout} = Brix.get_layout(page.layout)
+        site = Brix.get_site()
+        {:noreply, assign(socket, page: page, layout: layout, site: site)}
+
+      :error ->
+        # Check for slug redirect
+        case Brix.find_redirect(slug) do
+          {:ok, new_slug} -> {:noreply, redirect(socket, to: new_slug)}
+          :error -> raise MyAppWeb.NotFoundError
+        end
+    end
+  end
+
+  def render(assigns) do
+    ~H"""
+    <Brix.Render.layout layout={@layout} module={MyAppWeb.Sections}>
+      <Brix.Render.sections sections={@page.sections} module={MyAppWeb.Sections} />
+    </Brix.Render.layout>
+    """
+  end
+end
+```
+
+### 3. SEO in root layout
+
+```heex
+<head>
+  <title>{Brix.Meta.title(@page, @site)}</title>
+  <meta name="description" content={Brix.Meta.description(@page, @site)} />
+  <meta property="og:title" content={Brix.Meta.og_title(@page, @site)} />
+  <meta property="og:description" content={Brix.Meta.og_description(@page, @site)} />
+</head>
+```
+
+## Validation
+
+Brix validates content on boot. Errors block loading. Warnings are logged.
+
+Checked:
+- Required fields present
+- Field types match template schemas
+- All references resolve (layouts, templates, authors, tags, media, shared sections)
+- Media files exist on disk
+- Unknown fields flagged with "did you mean?" suggestions
+
+```elixir
+result = Brix.Validator.validate("priv/content")
+# => %{errors: [], warnings: []}
+```
+
+## Lifecycle
+
+```
+Author → Validate → Load → Serve
+```
+
+1. Write YAML/MD files in `priv/content/`
+2. Boot validates all content against templates and cross-references
+3. Valid content is parsed into structs, markdown converted to HTML, cached in ETS
+4. LiveView calls `Brix.get_page(slug)`, renders via section components
+
+Validation gates loading. Bad content never enters the store.
