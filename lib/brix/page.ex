@@ -90,11 +90,22 @@ defmodule Brix.Page do
   end
 
   defp section_text(section) do
-    section.fields
-    |> Enum.flat_map(fn
-      {_key, value} when is_binary(value) -> [strip_html(value)]
-      _ -> []
-    end)
+    own_texts =
+      section.fields
+      |> Enum.flat_map(fn
+        {_key, value} when is_binary(value) -> [strip_html(value)]
+        _ -> []
+      end)
+
+    children = section.children || %{}
+
+    child_texts =
+      children
+      |> Enum.flat_map(fn {_field, child_sections} ->
+        Enum.flat_map(child_sections, &section_text/1)
+      end)
+
+    own_texts ++ child_texts
   end
 
   defp strip_html(text) do

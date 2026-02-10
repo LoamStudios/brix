@@ -158,4 +158,58 @@ defmodule Brix.PageTest do
       assert Page.excerpt(%Page{}) == ""
     end
   end
+
+  describe "matches?/2 with nested sections" do
+    @nested_page %Page{
+      title: "Gallery",
+      sections: [
+        %Section{
+          template: "gallery",
+          position: 1,
+          fields: %{"title" => "Photo Gallery"},
+          children: %{
+            "slides" => [
+              %Section{template: "slide", position: 1, fields: %{"heading" => "Sunset Beach"}},
+              %Section{template: "slide", position: 2, fields: %{"heading" => "Mountain View"}}
+            ]
+          }
+        }
+      ]
+    }
+
+    test "finds text in nested sections" do
+      assert Page.matches?(@nested_page, "sunset")
+    end
+
+    test "finds text in parent section" do
+      assert Page.matches?(@nested_page, "photo gallery")
+    end
+
+    test "does not match absent text" do
+      refute Page.matches?(@nested_page, "ocean")
+    end
+  end
+
+  describe "excerpt/2 with nested sections" do
+    test "includes nested section text" do
+      page = %Page{
+        sections: [
+          %Section{
+            template: "gallery",
+            position: 1,
+            fields: %{"title" => "Photos"},
+            children: %{
+              "slides" => [
+                %Section{template: "slide", position: 1, fields: %{"heading" => "Beautiful Sunset"}}
+              ]
+            }
+          }
+        ]
+      }
+
+      excerpt = Page.excerpt(page, 500)
+      assert excerpt =~ "Photos"
+      assert excerpt =~ "Beautiful Sunset"
+    end
+  end
 end
