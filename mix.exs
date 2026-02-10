@@ -12,7 +12,15 @@ defmodule Brix.MixProject do
       source_url: "https://github.com/LoamStudios/brix",
       docs: [
         main: "Brix",
-        extras: ["README.md"]
+        extras: [
+          "README.md",
+          "cheatsheets/api.cheatmd",
+          "cheatsheets/content-structure.cheatmd",
+          "cheatsheets/rendering.cheatmd"
+        ],
+        groups_for_extras: [
+          Cheatsheets: ~r/cheatsheets\/.*/
+        ]
       ]
     ]
   end

@@ -1,0 +1,216 @@
+# Brix API Quick Reference
+
+## Site & Pages
+
+### Get the site configuration
+{: .col-2}
+
+#### Site
+
+```elixir
+site = Brix.get_site()
+site.name        #=> "My Site"
+site.domain      #=> "example.com"
+site.tagline     #=> "A brief tagline"
+```
+
+#### Get a page by slug
+
+```elixir
+{:ok, page} = Brix.get_page("/blog/hello")
+
+# Include drafts
+{:ok, draft} = Brix.get_page("/wip", status: :draft)
+
+# Any status
+{:ok, page} = Brix.get_page("/wip", status: :all)
+```
+
+#### List pages with filters
+
+```elixir
+# All published pages (default)
+Brix.list_pages()
+
+# Filter by tag
+Brix.list_pages(tag: "coffee")
+
+# Filter by author
+Brix.list_pages(author: "maya")
+
+# Filter by slug prefix
+Brix.list_pages(prefix: "/blog/")
+
+# Combine filters
+Brix.list_pages(
+  tag: "coffee",
+  author: "maya",
+  prefix: "/blog/",
+  status: :published
+)
+```
+
+#### Page helpers
+
+```elixir
+Brix.Page.published?(page)  #=> true | false
+
+# Case-insensitive search across title,
+# meta_description, and section fields
+Brix.Page.matches?(page, "elixir")  #=> true | false
+
+# Plain-text excerpt (default 200 chars)
+Brix.Page.excerpt(page)       #=> "First 200 chars..."
+Brix.Page.excerpt(page, 100)  #=> "First 100 chars..."
+```
+
+## Layouts, Authors, Tags, Media
+
+### Core resource lookups
+{: .col-2}
+
+#### Layouts
+
+```elixir
+{:ok, layout} = Brix.get_layout("default")
+layout.name             #=> "default"
+layout.header_sections  #=> [%Section{}, ...]
+layout.footer_sections  #=> [%Section{}, ...]
+```
+
+#### Authors
+
+```elixir
+{:ok, author} = Brix.get_author("maya")
+author.name    #=> "Maya"
+author.bio     #=> "Author biography"
+author.avatar  #=> "maya-avatar"
+
+Brix.list_authors()  #=> [%Author{}, ...]
+```
+
+#### Tags
+
+```elixir
+{:ok, tag} = Brix.get_tag("coffee")
+tag.display_name  #=> "Coffee"
+
+Brix.list_tags()  #=> [%Tag{}, ...]
+```
+
+#### Media
+
+```elixir
+{:ok, media} = Brix.get_media("hero-image")
+media.path          #=> "files/hero.jpg"
+media.alt           #=> "Hero image"
+media.content_type  #=> "image/jpeg"
+
+Brix.list_media()  #=> [%Media{}, ...]
+```
+
+## Collections & Shared Sections
+
+### Groupings and reusable content
+{: .col-2}
+
+#### Collections
+
+```elixir
+{:ok, collection} = Brix.get_collection("blog")
+collection.name      #=> "Blog"
+collection.filters   #=> %{prefix: "/blog/"}
+collection.sort_by   #=> "published_at"
+
+# List pages matching collection filters
+pages = Brix.list_collection_pages(collection)
+
+Brix.list_collections()  #=> [%Collection{}, ...]
+```
+
+#### Shared sections
+
+```elixir
+{:ok, section} = Brix.get_shared_section("main-nav")
+section.template  #=> "nav"
+section.fields    #=> %{"links" => [...]}
+
+Brix.list_shared_sections()  #=> [%SharedSection{}, ...]
+```
+
+#### Section templates
+
+```elixir
+{:ok, tmpl} = Brix.get_section_template("hero")
+tmpl.fields
+#=> %{"heading" => %{type: :string, required: true},
+#     "image" => %{type: :media}}
+
+Brix.list_section_templates()  #=> [%SectionTemplate{}, ...]
+```
+
+## SEO Metadata
+
+### Resolved metadata via `Brix.Meta.field/3`
+{: .col-2}
+
+#### Field resolution
+
+```elixir
+site = Brix.get_site()
+{:ok, page} = Brix.get_page("/blog/hello")
+
+# Each field falls back page -> site
+Brix.Meta.field(page, site, :title)
+Brix.Meta.field(page, site, :description)
+Brix.Meta.field(page, site, :og_title)
+Brix.Meta.field(page, site, :og_description)
+Brix.Meta.field(page, site, :og_image)
+```
+
+#### Fallback chain
+
+```
+:title       => page.meta_title || page.title
+                 || site.meta_title || site.name
+
+:description => page.meta_description
+                 || site.meta_description
+
+:og_title    => page.og_title
+                 || field(page, site, :title)
+
+:og_description => page.og_description
+                    || field(page, site, :description)
+
+:og_image    => page.og_image || site.og_image
+```
+
+#### Works with collections too
+
+```elixir
+{:ok, collection} = Brix.get_collection("blog")
+
+Brix.Meta.field(collection, site, :title)
+Brix.Meta.field(collection, site, :og_image)
+```
+
+## Reload
+
+### Refresh content from disk
+{: .col-2}
+
+#### Reload the store
+
+```elixir
+# Reloads all content from the filesystem
+Brix.reload()  #=> :ok | {:error, reason}
+```
+
+#### Slug redirects
+
+```elixir
+# Look up old slugs from slug_history
+Brix.find_redirect("/old-url")  #=> {:ok, "/new-url"}
+Brix.find_redirect("/unknown")  #=> :error
+```

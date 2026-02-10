@@ -1,0 +1,321 @@
+# Content Directory Structure
+
+## Directory Tree
+
+### Overview
+{: .col-2}
+
+#### Full directory layout
+
+```
+priv/content/
+├── site.yml
+├── authors/
+│   └── {slug}.yml
+├── tags/
+│   └── {slug}.yml
+├── media/
+│   ├── {slug}.yml
+│   └── files/
+│       └── {path}
+├── templates/
+│   └── sections/
+│       └── {template_name}.yml
+├── layouts/
+│   └── {layout_name}.yml
+├── shared_sections/
+│   └── {name}.yml
+├── collections/
+│   └── {slug}.yml
+└── pages/
+    └── {slug}/
+        ├── page.yml
+        └── versions/
+            └── {YYYYMMDDTHHMMSSz}/
+                ├── version.yml
+                └── sections/
+                    ├── 01-{name}.yml
+                    ├── 02-{name}.md
+                    └── 03-{name}.{field}.md
+```
+
+#### Naming conventions
+
+| Resource        | Key derived from     |
+| --------------- | -------------------- |
+| Pages           | Directory path       |
+| Authors         | Filename sans `.yml` |
+| Tags            | Filename sans `.yml` |
+| Media           | Filename sans `.yml` |
+| Layouts         | Filename sans `.yml` |
+| Shared sections | Filename sans `.yml` |
+| Collections     | Filename sans `.yml` |
+
+## Site & Globals
+
+### `site.yml` and global resources
+{: .col-2}
+
+#### site.yml
+
+```yaml
+name: My Site
+tagline: A brief tagline
+meta_title: SEO title
+meta_description: SEO description
+domain: example.com
+og_image: og-default
+favicon: favicon
+```
+
+#### authors/{slug}.yml
+
+```yaml
+name: Maya Johnson
+bio: Author biography text
+avatar: maya-avatar
+url: https://example.com
+# extra: (any additional fields)
+```
+
+#### tags/{slug}.yml
+
+```yaml
+display_name: Coffee
+```
+
+#### media/{slug}.yml
+
+```yaml
+path: files/hero.jpg
+alt: Descriptive alt text
+caption: Optional caption
+content_type: image/jpeg
+# extra: (any additional fields)
+```
+
+Media files live in `media/files/` alongside the YAML metadata.
+
+## Layouts
+
+### Layout definitions
+{: .col-2}
+
+#### Inline sections
+
+```yaml
+# layouts/default.yml
+header_sections:
+  - template: nav
+    fields:
+      links:
+        - label: Home
+          url: /
+        - label: Blog
+          url: /blog
+footer_sections:
+  - template: footer
+    fields:
+      copyright: "2025 My Site"
+```
+
+#### Shared section references
+
+```yaml
+# layouts/default.yml
+header_sections:
+  - shared_section: main-nav
+footer_sections:
+  - shared_section: site-footer
+```
+
+Shared section refs are resolved at load time — the final `Layout` struct contains full `Section` structs.
+
+## Shared Sections & Collections
+
+### Reusable content blocks and page groupings
+{: .col-2}
+
+#### shared_sections/{name}.yml
+
+```yaml
+# shared_sections/main-nav.yml
+template: nav
+fields:
+  links:
+    - label: Home
+      url: /
+    - label: Blog
+      url: /blog
+```
+
+Referenced in layouts via `shared_section: main-nav`.
+
+#### collections/{slug}.yml
+
+```yaml
+# collections/blog.yml
+name: Blog
+filters:
+  prefix: /blog/
+  tag: coffee
+  author: maya
+sort_by: published_at    # slug | title | published_at | updated_at
+sort_direction: desc     # asc (default) | desc
+
+# SEO (optional, used by Brix.Meta.field/3)
+meta_title: Blog Posts
+meta_description: All blog posts
+og_title: Blog
+og_description: Read our blog
+og_image: blog-og
+```
+
+## Section Templates
+
+### Field type definitions
+{: .col-2}
+
+#### templates/sections/{name}.yml
+
+```yaml
+# templates/sections/hero.yml
+fields:
+  heading:
+    type: string
+    required: true
+  subheading:
+    type: string
+  body:
+    type: richtext
+  image:
+    type: media
+  link_url:
+    type: url
+  visible:
+    type: boolean
+  count:
+    type: integer
+  items:
+    type: list
+    of: map
+  metadata:
+    type: map
+```
+
+#### Supported field types
+
+| Type       | Description                            |
+| ---------- | -------------------------------------- |
+| `string`   | Plain text                             |
+| `richtext` | Markdown converted to HTML at load     |
+| `media`    | Media slug reference                   |
+| `url`      | URL string                             |
+| `boolean`  | `true` / `false`                       |
+| `integer`  | Numeric value                          |
+| `list`     | List of items (optional `of:` subtype) |
+| `map`      | Key-value object                       |
+
+## Pages
+
+### Page directory layout with versions
+{: .col-2}
+
+#### page.yml
+
+```yaml
+# pages/blog/hello/page.yml
+title: Hello World
+layout: default
+authors:
+  - maya
+tags:
+  - coffee
+  - travel
+published_version: "20240315T090000Z"
+
+# SEO (optional)
+meta_title: Hello World - Blog
+meta_description: A post about coffee
+og_title: Hello World
+og_description: A post about coffee
+og_image: hello-og
+
+# Old URLs that redirect here
+slug_history:
+  - /old-hello
+  - /posts/hello
+```
+
+#### version.yml
+
+```yaml
+# pages/blog/hello/versions/20240315T090000Z/version.yml
+published_at: "2024-03-15T09:00:00Z"
+updated_at: "2024-03-15T09:00:00Z"
+```
+
+#### Slug derivation
+
+| Directory path       | Slug          |
+| -------------------- | ------------- |
+| `pages/index/`       | `/`           |
+| `pages/about/`       | `/about`      |
+| `pages/blog/hello/`  | `/blog/hello` |
+
+#### Publishing states
+
+| `published_at`    | Status    |
+| ----------------- | --------- |
+| absent / `nil`    | Draft     |
+| Future datetime   | Scheduled |
+| Past datetime     | Published |
+
+## Section Files
+
+### Three file formats for sections
+{: .col-2}
+
+#### YAML section
+
+```yaml
+# sections/01-hero.yml
+template: hero
+fields:
+  heading: Welcome
+  subheading: To my site
+  image: hero-image
+```
+
+Position extracted from filename prefix (`01-` -> position 1).
+
+#### Standalone markdown
+
+```markdown
+# sections/02-intro.md
+---
+template: richtext
+---
+
+This is the body with **bold** and *italic*.
+```
+
+Template from frontmatter or filename. The entire markdown body becomes the section's content field.
+
+#### Mixed: YAML + markdown field
+
+```yaml
+# sections/03-cta.yml
+template: cta
+fields:
+  heading: Call to Action
+  button_text: Learn More
+```
+
+```markdown
+# sections/03-cta.body.md
+
+Rich **markdown** content for the `body` field.
+```
+
+The `.body.md` file merges into the `body` key of the YAML section's fields. The `source_fields` map preserves the raw markdown before HTML conversion.

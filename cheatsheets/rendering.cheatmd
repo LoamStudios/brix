@@ -1,0 +1,219 @@
+# Phoenix Rendering
+
+## Section Components
+
+### The section component pattern
+{: .col-2}
+
+#### Define section renderers
+
+```elixir
+# lib/my_app_web/components/sections.ex
+defmodule MyAppWeb.Sections do
+  use Phoenix.Component
+
+  # Function name matches the section template name
+  def hero(assigns) do
+    ~H"""
+    <section class="hero">
+      <h1>{@fields["heading"]}</h1>
+      <p>{@fields["subheading"]}</p>
+    </section>
+    """
+  end
+
+  def richtext(assigns) do
+    ~H"""
+    <section class="prose">
+      {raw(@fields["body"])}
+    </section>
+    """
+  end
+end
+```
+
+#### Access field values
+
+```elixir
+# String fields
+@fields["heading"]
+
+# Richtext (HTML string, use raw/1)
+raw(@fields["body"])
+
+# Media (resolve slug to URL)
+Brix.Render.media_url(@fields["image"])
+
+# List fields
+for item <- @fields["items"] do
+  item["label"]
+end
+
+# Boolean fields
+if @fields["visible"] do
+  # ...
+end
+```
+
+## Rendering Sections & Layouts
+
+### Using `Brix.Render` components
+{: .col-2}
+
+#### Render page sections
+
+```heex
+<%!-- Dispatches each section to the matching
+     function in MyAppWeb.Sections --%>
+<Brix.Render.sections
+  sections={@page.sections}
+  module={MyAppWeb.Sections}
+/>
+```
+
+Each section's `template` field is used to call the corresponding function component in the given module.
+
+#### Render a layout with content
+
+```heex
+<%!-- Renders header sections, inner block,
+     then footer sections --%>
+<Brix.Render.layout
+  layout={@layout}
+  module={MyAppWeb.Sections}
+>
+  <%!-- Page content goes here --%>
+  <Brix.Render.sections
+    sections={@page.sections}
+    module={MyAppWeb.Sections}
+  />
+</Brix.Render.layout>
+```
+
+#### Resolve media URLs
+
+```elixir
+# In templates
+<img src={Brix.Render.media_url("hero-image")} />
+
+# Returns "/content/media/{path}" or ""
+Brix.Render.media_url("hero-image")
+```
+
+## SEO in Root Layout
+
+### Using `Brix.Meta.field/3` for meta tags
+{: .col-2}
+
+#### Root layout meta tags
+
+```heex
+<%!-- root.html.heex --%>
+<head>
+  <title>{Brix.Meta.field(@page, @site, :title)}</title>
+
+  <meta
+    name="description"
+    content={Brix.Meta.field(@page, @site, :description)}
+  />
+  <meta
+    property="og:title"
+    content={Brix.Meta.field(@page, @site, :og_title)}
+  />
+  <meta
+    property="og:description"
+    content={Brix.Meta.field(@page, @site, :og_description)}
+  />
+  <meta
+    property="og:image"
+    content={Brix.Meta.field(@page, @site, :og_image)}
+  />
+</head>
+```
+
+#### Available meta fields
+
+| Atom             | Fallback chain                                       |
+| ---------------- | ---------------------------------------------------- |
+| `:title`         | `page.meta_title -> page.title -> site.meta_title -> site.name` |
+| `:description`   | `page.meta_description -> site.meta_description`     |
+| `:og_title`      | `page.og_title -> :title fallback`                   |
+| `:og_description` | `page.og_description -> :description fallback`      |
+| `:og_image`      | `page.og_image -> site.og_image`                     |
+
+Works with both `%Page{}` and `%Collection{}` structs.
+
+## Slug Redirects
+
+### Handling old URLs
+{: .col-2}
+
+#### In a LiveView or controller
+
+```elixir
+def handle_params(%{"path" => path}, _uri, socket) do
+  slug = "/" <> Enum.join(path, "/")
+
+  case Brix.get_page(slug) do
+    {:ok, page} ->
+      {:noreply, assign(socket, page: page)}
+
+    :error ->
+      case Brix.find_redirect(slug) do
+        {:ok, new_slug} ->
+          {:noreply,
+           push_navigate(socket, to: new_slug)}
+
+        :error ->
+          raise MeWeb.NotFoundError
+      end
+  end
+end
+```
+
+#### Define slug history in page.yml
+
+```yaml
+# pages/blog/new-post/page.yml
+title: My Post
+slug_history:
+  - /blog/old-post
+  - /posts/my-post
+```
+
+Old slugs automatically resolve via `Brix.find_redirect/1`.
+
+## Store Setup
+
+### Configuring `Brix.Store.Filesystem`
+{: .col-2}
+
+#### application.ex
+
+```elixir
+# lib/my_app/application.ex
+def start(_type, _args) do
+  children = [
+    {Brix.Store.Filesystem,
+     content_dir:
+       Path.join(:code.priv_dir(:my_app), "content")},
+    # ... other children
+  ]
+
+  opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+  Supervisor.start_link(children, opts)
+end
+```
+
+#### Runtime reload
+
+```elixir
+# Reload content after editing files
+Brix.reload()
+
+# Validate content before loading
+Brix.Validator.validate(content_dir)
+#=> %{errors: [], warnings: []}
+```
+
+On boot, content is validated automatically. Errors block loading; warnings are logged.
