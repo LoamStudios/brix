@@ -205,8 +205,15 @@ defmodule Brix.Reader do
           base = Path.basename(path, ".yml")
 
           case Map.get(mixed_fields, base) do
-            nil -> section
-            extra -> %Section{section | fields: Map.merge(section.fields, extra)}
+            nil ->
+              section
+
+            %{fields: extra_fields, source_fields: extra_source} ->
+              %Section{
+                section
+                | fields: Map.merge(section.fields, extra_fields),
+                  source_fields: Map.merge(section.source_fields || %{}, extra_source)
+              }
           end
         end)
 
@@ -246,7 +253,8 @@ defmodule Brix.Reader do
     %Section{
       template: frontmatter["template"] || template,
       position: position,
-      fields: Map.put(frontmatter["fields"] || %{}, "body", markdown_to_html(body))
+      fields: Map.put(frontmatter["fields"] || %{}, "body", markdown_to_html(body)),
+      source_fields: %{"body" => body}
     }
   end
 
@@ -272,9 +280,17 @@ defmodule Brix.Reader do
       parts = String.split(base, ".")
       field_name = List.last(parts)
       yml_base = parts |> Enum.drop(-1) |> Enum.join(".")
-      html = path |> File.read!() |> markdown_to_html()
+      raw = path |> File.read!() |> String.trim()
+      html = markdown_to_html(raw)
 
-      Map.update(acc, yml_base, %{field_name => html}, &Map.put(&1, field_name, html))
+      entry = Map.get(acc, yml_base, %{fields: %{}, source_fields: %{}})
+
+      updated = %{
+        fields: Map.put(entry.fields, field_name, html),
+        source_fields: Map.put(entry.source_fields, field_name, raw)
+      }
+
+      Map.put(acc, yml_base, updated)
     end)
   end
 

@@ -4,11 +4,12 @@ defmodule Brix.Section do
   a position (for ordering), and a map of field values.
   """
 
-  defstruct [:template, :position, :fields]
+  defstruct [:template, :position, :fields, :source_fields]
 
   @type t :: %__MODULE__{
           template: String.t() | nil,
           position: integer() | nil,
-          fields: map() | nil
+          fields: map() | nil,
+          source_fields: map() | nil
         }
 end
