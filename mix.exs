@@ -7,7 +7,13 @@ defmodule Brix.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      name: "Brix",
+      source_url: "https://github.com/LoamStudios/brix",
+      docs: [
+        main: "Brix",
+        extras: ["README.md"]
+      ]
     ]
   end
 
@@ -21,7 +27,8 @@ defmodule Brix.MixProject do
     [
       {:yaml_elixir, "~> 2.11"},
       {:mdex, "~> 0.2"},
-      {:phoenix_live_view, "~> 1.0"}
+      {:phoenix_live_view, "~> 1.0"},
+      {:ex_doc, "~> 0.35", only: :dev, runtime: false}
     ]
   end
 end
