@@ -215,7 +215,9 @@ priv/content/
         └── sections/
             ├── 01-{name}.yml         # YAML section
             ├── 02-{name}.md          # Standalone markdown section
-            └── 03-{name}.{field}.md  # Mixed: markdown field merged into YAML
+            ├── 03-{name}.{field}.md  # Mixed: markdown field merged into YAML
+            └── 02-{name}.{field}/    # Nested child sections directory
+                └── 01-{child}.yml
 ```
 
 ### Section File Formats
@@ -238,6 +240,56 @@ priv/content/
 | `integer`  | Numeric value                          |
 | `list`     | List of items (optional `of:` subtype) |
 | `map`      | Key-value object                       |
+| `sections` | Nested child sections (optional `of:`) |
+
+### Nested Sections
+
+Sections can contain child sections via the `sections` field type. Children live in subdirectories named `{NN}-{template}.{field}/` alongside their parent file:
+
+```
+sections/
+├── 01-hero.yml
+├── 02-gallery.yml
+├── 02-gallery.slides/           # children for the "slides" field
+│   ├── 01-slide.yml
+│   ├── 01-slide.caption.md      # mixed markdown works in children too
+│   ├── 02-slide.yml
+│   └── 03-slide.yml
+└── 03-cta.yml
+```
+
+Declare which fields accept children in the section template:
+
+```yaml
+# templates/sections/gallery.yml
+fields:
+  title:
+    type: string
+    required: true
+  slides:
+    type: sections
+    of: slide           # constrains children to "slide" template
+    required: true
+```
+
+`of` supports a single template name or a list. Omitting `of` allows any template.
+
+### Rendering Nested Sections
+
+Child sections are available in `@children` (a `%{field_name => [Section]}` map) and `@module` is passed through. Use `Brix.Render.child_sections/1` to render them:
+
+```elixir
+def gallery(assigns) do
+  ~H"""
+  <div class="gallery">
+    <h2>{@fields["title"]}</h2>
+    <Brix.Render.child_sections module={@module} children={@children} field="slides" />
+  </div>
+  """
+end
+```
+
+Existing components that only use `@fields` are unaffected — `@children` defaults to `%{}`.
 
 ### Page Publishing
 

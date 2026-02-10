@@ -51,7 +51,11 @@ priv/content/
     │           ├── version.yml
     │           └── sections/
     │               ├── 01-hero.yml
-    │               └── 02-intro.md
+    │               ├── 02-gallery.yml
+    │               ├── 02-gallery.slides/    # nested sections
+    │               │   ├── 01-slide.yml
+    │               │   └── 02-slide.yml
+    │               └── 03-intro.md
     └── blog/
         └── morning-ritual/
             ├── page.yml
@@ -122,7 +126,7 @@ fields:
     type: media
 ```
 
-Supported field types: `string`, `richtext`, `media`, `url`, `integer`, `boolean`, `list`, `map`.
+Supported field types: `string`, `richtext`, `media`, `url`, `integer`, `boolean`, `list`, `map`, `sections`.
 
 ### layouts/default.yml
 
@@ -276,6 +280,48 @@ The loader merges them into a single Section struct with all fields combined. Th
 ```yaml
 shared_section: main-nav
 ```
+
+**Nested sections** — sections that contain child sections:
+
+Child sections live in subdirectories named `{NN}-{template}.{field}/` alongside their parent file. The directory name ties to the parent by matching the `{NN}-{template}` prefix, and the `.{field}` suffix names the field.
+
+```
+sections/
+├── 02-gallery.yml
+├── 02-gallery.slides/           # children for the "slides" field
+│   ├── 01-slide.yml
+│   ├── 01-slide.caption.md      # mixed markdown works in children too
+│   └── 02-slide.yml
+```
+
+Declare nested fields in the section template with `type: sections`:
+
+```yaml
+# templates/sections/gallery.yml
+fields:
+  title:
+    type: string
+    required: true
+  slides:
+    type: sections
+    of: slide           # constrains to "slide" template (single name or list)
+    required: true
+```
+
+Render children in components using `Brix.Render.child_sections/1`:
+
+```elixir
+def gallery(assigns) do
+  ~H"""
+  <div class="gallery">
+    <h2>{@fields["title"]}</h2>
+    <Brix.Render.child_sections module={@module} children={@children} field="slides" />
+  </div>
+  """
+end
+```
+
+The `@children` assign is a `%{field_name => [Section]}` map. `@module` is passed through so child rendering dispatches to the same component module. Nesting is recursive — children can have their own children.
 
 ## API
 
