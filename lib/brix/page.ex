@@ -7,7 +7,8 @@ defmodule Brix.Page do
   defstruct [:slug, :title, :meta_title, :meta_description,
              :og_title, :og_description, :og_image,
              :layout, :sections, :authors, :tags,
-             :published_at, :slug_history, :extra]
+             :published_at, :updated_at, :published_version,
+             :versions, :slug_history, :extra]
 
   @type t :: %__MODULE__{
           slug: String.t() | nil,
@@ -22,6 +23,9 @@ defmodule Brix.Page do
           authors: [String.t()] | nil,
           tags: [String.t()] | nil,
           published_at: DateTime.t() | nil,
+          updated_at: DateTime.t() | nil,
+          published_version: DateTime.t() | nil,
+          versions: [Brix.Version.t()] | nil,
           slug_history: [String.t()] | nil,
           extra: map() | nil
         }

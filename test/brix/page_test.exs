@@ -34,6 +34,9 @@ defmodule Brix.PageTest do
     assert page.sections == nil
     assert page.layout == nil
     assert page.published_at == nil
+    assert page.updated_at == nil
+    assert page.published_version == nil
+    assert page.versions == nil
     assert page.slug_history == nil
   end
 
