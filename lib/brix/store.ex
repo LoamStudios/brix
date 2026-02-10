@@ -4,7 +4,7 @@ defmodule Brix.Store do
   """
 
   @callback get_site() :: Brix.Site.t()
-  @callback get_page(slug :: String.t()) :: {:ok, Brix.Page.t()} | :error
+  @callback get_page(slug :: String.t(), opts :: keyword()) :: {:ok, Brix.Page.t()} | :error
   @callback list_pages(opts :: keyword()) :: [Brix.Page.t()]
   @callback get_layout(name :: String.t()) :: {:ok, Brix.Layout.t()} | :error
   @callback get_author(slug :: String.t()) :: {:ok, Brix.Author.t()} | :error

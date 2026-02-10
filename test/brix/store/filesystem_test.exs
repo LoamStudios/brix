@@ -55,6 +55,62 @@ defmodule Brix.Store.FilesystemTest do
     end
   end
 
+  describe "get_page/2 with version option" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "returns published version by default" do
+      assert {:ok, page} = Filesystem.get_page("/blog/morning-ritual")
+      assert length(page.sections) == 2
+      hero = hd(page.sections)
+      assert hero.fields["heading"] == "The Morning Ritual"
+    end
+
+    test "returns specific version when version: option given" do
+      assert {:ok, page} = Filesystem.get_page("/blog/morning-ritual", version: ~U[2024-11-15 14:00:00Z])
+      assert length(page.sections) == 3
+      hero = hd(page.sections)
+      assert hero.fields["heading"] == "The Morning Ritual (Updated)"
+    end
+
+    test "returns :error for nonexistent version" do
+      assert :error = Filesystem.get_page("/blog/morning-ritual", version: ~U[2099-01-01 00:00:00Z])
+    end
+
+    test "returns :error for nonexistent slug with version" do
+      assert :error = Filesystem.get_page("/nonexistent", version: ~U[2024-01-01 00:00:00Z])
+    end
+
+    test "page has versions list" do
+      assert {:ok, page} = Filesystem.get_page("/blog/morning-ritual")
+      assert length(page.versions) == 2
+    end
+
+    test "page has published_version, updated_at" do
+      assert {:ok, page} = Filesystem.get_page("/blog/morning-ritual")
+      assert page.published_version == ~U[2024-09-01 06:00:00Z]
+      assert page.updated_at == ~U[2024-11-15 14:00:00Z]
+      assert page.published_at == ~U[2024-09-01 06:00:00Z]
+    end
+
+    test "version selection swaps sections and timestamps" do
+      assert {:ok, page} = Filesystem.get_page("/blog/morning-ritual", version: ~U[2024-11-15 14:00:00Z])
+      # Draft version has no published_at
+      assert page.published_at == nil
+      assert page.updated_at == ~U[2024-11-15 14:00:00Z]
+    end
+
+    test "shared section refs are resolved in all versions" do
+      # Index page has only one version but all version sections should be resolved
+      assert {:ok, page} = Filesystem.get_page("/")
+      assert length(page.versions) == 1
+      [version] = page.versions
+      assert length(version.sections) == 2
+    end
+  end
+
   describe "list_pages/0" do
     setup do
       start_supervised!({Filesystem, content_dir: @valid})

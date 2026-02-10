@@ -10,7 +10,7 @@ defmodule Brix do
   defp store, do: Application.fetch_env!(:brix, :store)
 
   def get_site, do: store().get_site()
-  def get_page(slug), do: store().get_page(slug)
+  def get_page(slug, opts \\ []), do: store().get_page(slug, opts)
   def list_pages(opts \\ []), do: store().list_pages(opts)
   def get_layout(name), do: store().get_layout(name)
   def get_author(slug), do: store().get_author(slug)

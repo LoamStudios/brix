@@ -23,10 +23,28 @@ defmodule Brix.Store.Filesystem do
   end
 
   @impl Brix.Store
-  def get_page(slug) do
+  def get_page(slug, opts \\ []) do
     case :ets.lookup(__MODULE__, {:page, slug}) do
-      [{{:page, _}, page}] -> {:ok, page}
+      [{{:page, _}, page}] -> resolve_version(page, opts)
       [] -> :error
+    end
+  end
+
+  defp resolve_version(page, []), do: {:ok, page}
+
+  defp resolve_version(page, opts) do
+    case Keyword.get(opts, :version) do
+      nil ->
+        {:ok, page}
+
+      version_dt ->
+        case Enum.find(page.versions || [], &(&1.version == version_dt)) do
+          nil ->
+            :error
+
+          version ->
+            {:ok, %{page | sections: version.sections, published_at: version.published_at, updated_at: version.updated_at}}
+        end
     end
   end
 
@@ -181,6 +199,8 @@ defmodule Brix.Store.Filesystem do
 
   defp sort_pages(pages, "slug", direction), do: sort_by(pages, & &1.slug, direction)
   defp sort_pages(pages, "title", direction), do: sort_by(pages, & &1.title, direction)
+  defp sort_pages(pages, "published_at", direction), do: sort_by(pages, & &1.published_at, direction)
+  defp sort_pages(pages, "updated_at", direction), do: sort_by(pages, & &1.updated_at, direction)
   defp sort_pages(pages, _field, _direction), do: pages
 
   defp sort_by(pages, key_fn, :asc), do: Enum.sort_by(pages, key_fn)
@@ -242,9 +262,16 @@ defmodule Brix.Store.Filesystem do
       :ets.insert(table, {{:shared_section, shared.name}, shared})
     end
 
-    # Pages (resolve shared section refs + build redirect index)
+    # Pages (resolve shared section refs in all versions + build redirect index)
     for page <- Reader.read_pages(content_dir) do
-      resolved = %{page | sections: Reader.resolve_sections(page.sections, shared_map)}
+      resolved_versions =
+        Enum.map(page.versions || [], fn version ->
+          %{version | sections: Reader.resolve_sections(version.sections, shared_map)}
+        end)
+
+      resolved_sections = Reader.resolve_sections(page.sections, shared_map)
+
+      resolved = %{page | sections: resolved_sections, versions: resolved_versions}
       :ets.insert(table, {{:page, resolved.slug}, resolved})
 
       for old_slug <- resolved.slug_history || [] do
