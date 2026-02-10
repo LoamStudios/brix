@@ -46,15 +46,27 @@ priv/content/
 └── pages/
     ├── index/
     │   ├── page.yml
-    │   └── sections/
-    │       ├── 01-hero.yml
-    │       └── 02-intro.md
+    │   └── versions/
+    │       └── 20240315T090000Z/
+    │           ├── version.yml
+    │           └── sections/
+    │               ├── 01-hero.yml
+    │               └── 02-intro.md
     └── blog/
         └── morning-ritual/
             ├── page.yml
-            └── sections/
-                ├── 01-hero.yml
-                └── 02-body.md
+            └── versions/
+                ├── 20240901T060000Z/
+                │   ├── version.yml
+                │   └── sections/
+                │       ├── 01-hero.yml
+                │       └── 02-body.md
+                └── 20241115T140000Z/
+                    ├── version.yml
+                    └── sections/
+                        ├── 01-hero.yml
+                        ├── 02-body.md
+                        └── 03-tips.yml
 ```
 
 ## File formats
@@ -166,7 +178,7 @@ meta_title: Blog | Ember & Bloom
 meta_description: Thoughts on coffee and craft.
 ```
 
-Filter keys: `prefix`, `tag`, `author`. Sort fields: `slug`, `title`.
+Filter keys: `prefix`, `tag`, `author`. Sort fields: `slug`, `title`, `published_at`, `updated_at`.
 
 ### pages/index/page.yml
 
@@ -179,9 +191,20 @@ meta_title: Ember & Bloom | Home
 meta_description: Specialty coffee in SE Portland.
 authors: [maya]
 tags: [coffee]
-published_at: "2024-03-15T09:00:00Z"
+published_version: "20240315T090000Z"
 slug_history:
   - /old-home-url
+```
+
+`published_version` points to the version directory name that serves as the live content. `slug_history` enables redirect lookups for old URLs.
+
+### versions/20240315T090000Z/version.yml
+
+Each version directory is named with a compact ISO timestamp (`YYYYMMDDTHHMMSSz`). The `version.yml` contains per-version metadata:
+
+```yaml
+published_at: "2024-03-15T09:00:00Z"
+updated_at: "2024-03-15T09:00:00Z"
 ```
 
 `published_at` controls draft/published status:
@@ -189,11 +212,17 @@ slug_history:
 - Future datetime → scheduled (draft until that time)
 - Past datetime → published
 
-`slug_history` enables redirect lookups for old URLs.
+`updated_at` tracks when the version was last modified — useful for "Edited" dates in collection UIs.
+
+**Page-level data** (shared across versions): slug, title, layout, authors, tags, meta_*, og_*, slug_history, extra, `published_version`.
+
+**Version-level data** (per version): sections, `published_at`, `updated_at`.
+
+The page struct's `sections` and `published_at` are populated from the published version for backward compatibility.
 
 ### Page sections
 
-Sections live in `pages/*/sections/`. Filename prefix sets order: `01-hero.yml` before `02-body.md`.
+Sections live in `pages/*/versions/*/sections/`. Filename prefix sets order: `01-hero.yml` before `02-body.md`.
 
 **YAML sections** — structured data:
 
@@ -257,9 +286,19 @@ shared_section: main-nav
 Brix.get_site()
 # => %Brix.Site{name: "Ember & Bloom", ...}
 
-# Pages
+# Pages — returns published version's sections by default
 Brix.get_page("/blog/morning-ritual")
 # => {:ok, %Brix.Page{title: "The Morning Ritual", sections: [...], ...}}
+
+# Request a specific version (e.g. preview a draft)
+Brix.get_page("/blog/morning-ritual", version: ~U[2024-11-15 14:00:00Z])
+# => {:ok, %Brix.Page{sections: [draft sections...], ...}}
+
+# Access all versions
+{:ok, page} = Brix.get_page("/blog/morning-ritual")
+page.versions       # => [%Brix.Version{}, ...]
+page.published_version  # => ~U[2024-09-01 06:00:00Z]
+page.updated_at     # => ~U[2024-11-15 14:00:00Z]  (from latest version)
 
 Brix.list_pages()
 # => [%Brix.Page{}, ...]
