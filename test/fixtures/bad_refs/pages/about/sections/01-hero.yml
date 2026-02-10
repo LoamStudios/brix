@@ -1,0 +1,4 @@
+template: nonexistent_template
+fields:
+  heading: Hello
+  image: no_such_media

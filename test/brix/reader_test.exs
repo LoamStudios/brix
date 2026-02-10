@@ -80,7 +80,7 @@ defmodule Brix.ReaderTest do
   describe "read_section_templates/1" do
     test "reads all section templates" do
       templates = Reader.read_section_templates(@fixtures)
-      assert length(templates) == 2
+      assert length(templates) == 4
 
       hero = Enum.find(templates, &(&1.name == "hero"))
       assert %SectionTemplate{} = hero

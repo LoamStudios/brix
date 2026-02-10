@@ -1,0 +1,4 @@
+header_sections:
+  - template: nav
+    fields: {}
+footer_sections: []

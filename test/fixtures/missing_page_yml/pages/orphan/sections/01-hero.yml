@@ -1,0 +1,3 @@
+template: hero
+fields:
+  heading: Hello

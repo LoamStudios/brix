@@ -1,0 +1,6 @@
+fields:
+  heading:
+    type: string
+    required: true
+  image:
+    type: media
