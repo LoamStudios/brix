@@ -1,0 +1,8 @@
+template: hero
+fields:
+  headign: Typo Field
+  subheading: Valid string
+  image: no_such_media
+  count: not_a_number
+  visible: "yes"
+  link: not-a-url

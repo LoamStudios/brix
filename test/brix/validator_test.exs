@@ -8,6 +8,7 @@ defmodule Brix.ValidatorTest do
   @missing_site Path.expand("../fixtures/missing_site", __DIR__)
   @missing_page_yml Path.expand("../fixtures/missing_page_yml", __DIR__)
   @bad_refs Path.expand("../fixtures/bad_refs", __DIR__)
+  @bad_schema Path.expand("../fixtures/bad_schema", __DIR__)
 
   describe "Issue struct" do
     test "creates with all fields" do
@@ -102,10 +103,54 @@ defmodule Brix.ValidatorTest do
     end
   end
 
+  describe "schema validation" do
+    test "errors when required field is missing" do
+      result = Validator.validate(@bad_schema)
+
+      assert has_error?(result, :missing_required_field, ~r/missing required field "heading"/)
+    end
+
+    test "errors when media field references unknown media" do
+      result = Validator.validate(@bad_schema)
+
+      assert has_error?(result, :unresolved_reference, ~r/media "no_such_media" not found/)
+    end
+
+    test "errors when integer field has non-integer value" do
+      result = Validator.validate(@bad_schema)
+
+      assert has_error?(result, :type_mismatch, ~r/"count".*expected integer/)
+    end
+
+    test "errors when boolean field has non-boolean value" do
+      result = Validator.validate(@bad_schema)
+
+      assert has_error?(result, :type_mismatch, ~r/"visible".*expected boolean/)
+    end
+
+    test "errors when url field has invalid format" do
+      result = Validator.validate(@bad_schema)
+
+      assert has_error?(result, :type_mismatch, ~r/"link".*expected url/)
+    end
+
+    test "warns on unknown field with fuzzy suggestion" do
+      result = Validator.validate(@bad_schema)
+
+      assert has_warning?(result, :unknown_field, ~r/unknown field "headign".*did you mean "heading"/)
+    end
+  end
+
   # --- Helpers ---
 
   defp has_error?(result, type, message_pattern) do
     Enum.any?(result.errors, fn issue ->
+      issue.type == type and Regex.match?(message_pattern, issue.message)
+    end)
+  end
+
+  defp has_warning?(result, type, message_pattern) do
+    Enum.any?(result.warnings, fn issue ->
       issue.type == type and Regex.match?(message_pattern, issue.message)
     end)
   end

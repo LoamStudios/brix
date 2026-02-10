@@ -1,0 +1,14 @@
+fields:
+  heading:
+    type: string
+    required: true
+  subheading:
+    type: string
+  image:
+    type: media
+  count:
+    type: integer
+  visible:
+    type: boolean
+  link:
+    type: url
