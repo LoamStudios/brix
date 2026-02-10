@@ -20,7 +20,7 @@ defmodule Brix.MixProject do
   defp deps do
     [
       {:yaml_elixir, "~> 2.11"},
-      {:earmark, "~> 1.4"},
+      {:mdex, "~> 0.2"},
       {:phoenix_live_view, "~> 1.0"}
     ]
   end

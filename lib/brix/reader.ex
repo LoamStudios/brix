@@ -285,8 +285,7 @@ defmodule Brix.Reader do
   end
 
   defp markdown_to_html(markdown) do
-    markdown
-    |> Earmark.as_html!()
+    MDEx.to_html!(markdown)
     |> String.trim()
   end
 end
