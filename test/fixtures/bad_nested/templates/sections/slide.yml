@@ -1,0 +1,4 @@
+fields:
+  heading:
+    type: string
+    required: true

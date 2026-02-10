@@ -285,11 +285,19 @@ defmodule Brix.Validator do
             nil -> inner_acc  # template ref error already caught
             template ->
               section_path = version_section_file_path(page, version, section)
-              validate_section_fields(inner_acc, section_path, section.fields, template, index)
+              validate_section_recursive(inner_acc, section_path, section, template, index, templates_by_name)
           end
         end)
       end)
     end)
+  end
+
+  defp validate_section_recursive(result, path, section, template, index, templates_by_name) do
+    result
+    |> validate_section_fields(path, section.fields, template, index)
+    |> check_required_sections_fields(path, section, template)
+    |> validate_children(path, section, template, index, templates_by_name)
+    |> check_unexpected_children(path, section, template)
   end
 
   defp validate_section_fields(result, path, fields, template, index) do
@@ -301,13 +309,80 @@ defmodule Brix.Validator do
 
   defp check_required_fields(result, path, fields, template) do
     template.fields
-    |> Enum.filter(fn {_name, def} -> def.required end)
+    |> Enum.filter(fn {_name, def} -> def.required and def.type != :sections end)
     |> Enum.reduce(result, fn {name, _def}, acc ->
       if Map.has_key?(fields, name) do
         acc
       else
         add_error(acc, path, :missing_required_field,
           "missing required field \"#{name}\" (template: #{template.name})")
+      end
+    end)
+  end
+
+  defp check_required_sections_fields(result, path, section, template) do
+    template.fields
+    |> Enum.filter(fn {_name, def} -> def.required and def.type == :sections end)
+    |> Enum.reduce(result, fn {name, _def}, acc ->
+      children = Map.get(section.children, name, [])
+
+      if children != [] do
+        acc
+      else
+        add_error(acc, path, :missing_required_field,
+          "missing required field \"#{name}\" (template: #{template.name})")
+      end
+    end)
+  end
+
+  defp validate_children(result, path, section, template, index, templates_by_name) do
+    children = section.children || %{}
+
+    Enum.reduce(children, result, fn {field_name, child_sections}, acc ->
+      field_def = Map.get(template.fields, field_name)
+
+      Enum.reduce(child_sections, acc, fn child, inner_acc ->
+        child_path = "#{path}.#{field_name}/#{String.pad_leading(to_string(child.position), 2, "0")}-#{child.template}"
+
+        # Check of constraint
+        inner_acc =
+          if field_def && field_def.type == :sections && field_def.of do
+            if child.template in field_def.of do
+              inner_acc
+            else
+              allowed = Enum.join(field_def.of, ", ")
+              add_error(inner_acc, child_path, :invalid_child_template,
+                "template \"#{child.template}\" not allowed here (allowed: #{allowed})")
+            end
+          else
+            inner_acc
+          end
+
+        # Recursively validate child
+        case Map.get(templates_by_name, child.template) do
+          nil -> inner_acc
+          child_template ->
+            validate_section_recursive(inner_acc, child_path, child, child_template, index, templates_by_name)
+        end
+      end)
+    end)
+  end
+
+  defp check_unexpected_children(result, path, section, template) do
+    sections_fields =
+      template.fields
+      |> Enum.filter(fn {_name, def} -> def.type == :sections end)
+      |> Enum.map(fn {name, _def} -> name end)
+      |> MapSet.new()
+
+    children = section.children || %{}
+
+    Enum.reduce(children, result, fn {field_name, _child_sections}, acc ->
+      if MapSet.member?(sections_fields, field_name) do
+        acc
+      else
+        add_warning(acc, path, :unexpected_children,
+          "children directory \"#{field_name}\" has no matching sections field (template: #{template.name})")
       end
     end)
   end
