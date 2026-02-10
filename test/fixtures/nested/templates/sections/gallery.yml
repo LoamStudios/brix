@@ -1,0 +1,8 @@
+fields:
+  title:
+    type: string
+    required: true
+  slides:
+    type: sections
+    of: slide
+    required: true

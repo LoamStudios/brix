@@ -1,0 +1,9 @@
+fields:
+  heading:
+    type: string
+    required: true
+  caption:
+    type: richtext
+  images:
+    type: sections
+    of: slide_image

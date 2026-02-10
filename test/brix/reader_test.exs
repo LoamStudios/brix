@@ -397,4 +397,82 @@ defmodule Brix.ReaderTest do
       assert Reader.read_collections(@fixtures) == []
     end
   end
+
+  describe "nested sections" do
+    @nested Path.expand("../fixtures/nested", __DIR__)
+    @nested_sections_dir Path.join(@nested, "pages/gallery/versions/20240101T000000Z/sections")
+
+    test "reads children from subdirectories" do
+      sections = Reader.read_sections(@nested_sections_dir)
+      gallery = Enum.find(sections, &(&1.template == "gallery"))
+
+      assert %Section{} = gallery
+      assert Map.has_key?(gallery.children, "slides")
+      assert length(gallery.children["slides"]) == 3
+    end
+
+    test "children are keyed by field name" do
+      sections = Reader.read_sections(@nested_sections_dir)
+      gallery = Enum.find(sections, &(&1.template == "gallery"))
+
+      assert is_map(gallery.children)
+      assert Map.keys(gallery.children) == ["slides"]
+    end
+
+    test "children are sorted by position" do
+      sections = Reader.read_sections(@nested_sections_dir)
+      gallery = Enum.find(sections, &(&1.template == "gallery"))
+      slides = gallery.children["slides"]
+
+      positions = Enum.map(slides, & &1.position)
+      assert positions == [1, 2, 3]
+    end
+
+    test "mixed markdown works in children" do
+      sections = Reader.read_sections(@nested_sections_dir)
+      gallery = Enum.find(sections, &(&1.template == "gallery"))
+      first_slide = hd(gallery.children["slides"])
+
+      assert first_slide.fields["caption"] =~ "<strong>"
+      assert first_slide.fields["caption"] =~ "first"
+      assert first_slide.source_fields["caption"] =~ "**first**"
+    end
+
+    test "deeply nested sections (3 levels)" do
+      sections = Reader.read_sections(@nested_sections_dir)
+      gallery = Enum.find(sections, &(&1.template == "gallery"))
+      first_slide = hd(gallery.children["slides"])
+
+      assert Map.has_key?(first_slide.children, "images")
+      images = first_slide.children["images"]
+      assert length(images) == 1
+      assert hd(images).template == "slide_image"
+      assert hd(images).fields["alt"] == "A beautiful sunset"
+    end
+
+    test "sections without subdirs have empty children map" do
+      sections = Reader.read_sections(@nested_sections_dir)
+      hero = Enum.find(sections, &(&1.template == "hero"))
+
+      assert hero.children == %{}
+    end
+
+    test "section template reads sections type with of constraint" do
+      templates = Reader.read_section_templates(@nested)
+      gallery = Enum.find(templates, &(&1.name == "gallery"))
+
+      assert gallery.fields["slides"].type == :sections
+      assert gallery.fields["slides"].of == ["slide"]
+      assert gallery.fields["slides"].required == true
+    end
+
+    test "section template reads sections type with of as list" do
+      # The slide template has images with of: slide_image
+      templates = Reader.read_section_templates(@nested)
+      slide = Enum.find(templates, &(&1.name == "slide"))
+
+      assert slide.fields["images"].type == :sections
+      assert slide.fields["images"].of == ["slide_image"]
+    end
+  end
 end
