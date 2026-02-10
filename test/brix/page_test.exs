@@ -58,4 +58,55 @@ defmodule Brix.PageTest do
       assert Page.published?(%Page{published_at: now})
     end
   end
+
+  describe "matches?/2" do
+    @page %Page{
+      title: "The Morning Ritual",
+      meta_description: "A guide to brewing better coffee at home.",
+      sections: [
+        %Section{template: "hero", position: 1, fields: %{"heading" => "Rise and Grind", "subheading" => "Every day starts here"}},
+        %Section{template: "richtext", position: 2, fields: %{"body" => "<p>French press is <strong>forgiving</strong> and produces a full-bodied cup.</p>"}}
+      ]
+    }
+
+    test "matches page title" do
+      assert Page.matches?(@page, "morning")
+    end
+
+    test "matches meta_description" do
+      assert Page.matches?(@page, "brewing")
+    end
+
+    test "matches section string fields" do
+      assert Page.matches?(@page, "grind")
+    end
+
+    test "matches section body with HTML stripped" do
+      assert Page.matches?(@page, "forgiving")
+    end
+
+    test "does not match HTML tags" do
+      refute Page.matches?(@page, "strong")
+    end
+
+    test "is case-insensitive" do
+      assert Page.matches?(@page, "MORNING")
+      assert Page.matches?(@page, "French Press")
+    end
+
+    test "returns false for no match" do
+      refute Page.matches?(@page, "espresso")
+    end
+
+    test "blank query matches everything" do
+      assert Page.matches?(@page, "")
+      assert Page.matches?(@page, "  ")
+    end
+
+    test "handles page with nil sections" do
+      page = %Page{title: "Empty"}
+      assert Page.matches?(page, "empty")
+      refute Page.matches?(page, "nope")
+    end
+  end
 end
