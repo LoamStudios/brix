@@ -42,7 +42,11 @@ defmodule Brix.Render do
     """
   end
 
-  defp render_section(module, section) do
+  @doc """
+  Renders a single section by dispatching to the matching function component
+  in `module`. Passes `@fields`, `@children`, and `@module` as assigns.
+  """
+  def render_section(module, section) do
     Code.ensure_loaded!(module)
     func = String.to_atom(section.template)
 
@@ -51,8 +55,35 @@ defmodule Brix.Render do
             "no section renderer #{module}.#{func}/1 for template #{inspect(section.template)}"
     end
 
-    assigns = %{fields: section.fields, __changed__: %{}}
+    assigns = %{fields: section.fields, children: section.children, module: module, __changed__: %{}}
     apply(module, func, [assigns])
+  end
+
+  @doc """
+  Renders child sections for a specific field. Use inside section components
+  to render nested sections.
+
+  ## Example
+
+      def gallery(assigns) do
+        ~H\"""
+        <div class="gallery">
+          <h2>{@fields["title"]}</h2>
+          <Brix.Render.child_sections module={@module} children={@children} field="slides" />
+        </div>
+        \"""
+      end
+  """
+  attr :module, :atom, required: true
+  attr :children, :map, required: true
+  attr :field, :string, required: true
+
+  def child_sections(assigns) do
+    ~H"""
+    <%= for section <- Map.get(@children, @field, []) do %>
+      {render_section(@module, section)}
+    <% end %>
+    """
   end
 
   @doc """

@@ -35,6 +35,21 @@ defmodule Brix.RenderTest do
       <footer>footer</footer>
       """
     end
+
+    def gallery(assigns) do
+      ~H"""
+      <div class="gallery">
+        <h2>{@fields["title"]}</h2>
+        <Brix.Render.child_sections module={@module} children={@children} field="slides" />
+      </div>
+      """
+    end
+
+    def slide(assigns) do
+      ~H"""
+      <div class="slide"><h3>{@fields["heading"]}</h3></div>
+      """
+    end
   end
 
   setup do
@@ -76,6 +91,81 @@ defmodule Brix.RenderTest do
 
       assert html =~ "nav"
       assert html =~ "footer"
+    end
+  end
+
+  describe "child_sections/1" do
+    test "renders children for a specific field" do
+      slides = [
+        %Section{template: "slide", position: 1, fields: %{"heading" => "Slide 1"}},
+        %Section{template: "slide", position: 2, fields: %{"heading" => "Slide 2"}}
+      ]
+
+      gallery = %Section{
+        template: "gallery",
+        position: 1,
+        fields: %{"title" => "My Gallery"},
+        children: %{"slides" => slides}
+      }
+
+      html = render_component(&Render.sections/1,
+        sections: [gallery],
+        module: TestSections
+      )
+
+      assert html =~ "My Gallery"
+      assert html =~ "Slide 1"
+      assert html =~ "Slide 2"
+    end
+
+    test "renders nothing for empty field" do
+      gallery = %Section{
+        template: "gallery",
+        position: 1,
+        fields: %{"title" => "Empty Gallery"},
+        children: %{}
+      }
+
+      html = render_component(&Render.sections/1,
+        sections: [gallery],
+        module: TestSections
+      )
+
+      assert html =~ "Empty Gallery"
+      refute html =~ "Slide"
+    end
+
+    test "render_section passes children and module in assigns" do
+      section = %Section{
+        template: "gallery",
+        position: 1,
+        fields: %{"title" => "Test"},
+        children: %{"slides" => [
+          %Section{template: "slide", position: 1, fields: %{"heading" => "S1"}}
+        ]}
+      }
+
+      # Render through the sections component to get full HTML
+      html = render_component(&Render.sections/1,
+        sections: [section],
+        module: TestSections
+      )
+
+      assert html =~ "Test"
+      assert html =~ "S1"
+    end
+
+    test "existing components still work without using children" do
+      sections = [
+        %Section{template: "hero", position: 1, fields: %{"heading" => "Works"}}
+      ]
+
+      html = render_component(&Render.sections/1,
+        sections: sections,
+        module: TestSections
+      )
+
+      assert html =~ "Works"
     end
   end
 
