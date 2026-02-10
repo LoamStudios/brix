@@ -1,0 +1,12 @@
+header_sections:
+  - template: nav
+    fields:
+      links:
+        - label: Home
+          url: /
+        - label: Blog
+          url: /blog
+footer_sections:
+  - template: footer
+    fields:
+      copyright: "2026"

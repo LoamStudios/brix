@@ -1,0 +1,4 @@
+fields:
+  body:
+    type: richtext
+    required: true
