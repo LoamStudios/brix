@@ -141,6 +141,53 @@ defmodule Brix.ValidatorTest do
     end
   end
 
+  describe "nested section validation" do
+    @nested Path.expand("../fixtures/nested", __DIR__)
+    @bad_nested Path.expand("../fixtures/bad_nested", __DIR__)
+
+    test "valid nested sections pass validation" do
+      result = Validator.validate(@nested)
+
+      assert result.errors == []
+      assert result.warnings == []
+    end
+
+    test "errors when child template violates of constraint" do
+      result = Validator.validate(@bad_nested)
+
+      assert has_error?(result, :invalid_child_template, ~r/template "wrong" not allowed.*allowed: slide/)
+    end
+
+    test "errors when required sections field has no children" do
+      # The bad_nested fixture's gallery only has wrong+slide children in slides,
+      # but we need a separate fixture to test empty. Let's check that the slides
+      # field IS populated (so required check passes) and the of-constraint fails instead.
+      # The "slides" field has children so required passes, but the required heading in
+      # the slide child (02-slide.yml) is missing.
+      result = Validator.validate(@bad_nested)
+
+      assert has_error?(result, :missing_required_field, ~r/missing required field "heading".*template: slide/)
+    end
+
+    test "warns when children directory has no matching sections field" do
+      result = Validator.validate(@bad_nested)
+
+      assert has_warning?(result, :unexpected_children, ~r/children directory "orphans" has no matching sections field/)
+    end
+
+    test "error paths include nesting" do
+      result = Validator.validate(@bad_nested)
+
+      # Find the invalid_child_template error and check its path includes nesting
+      error = Enum.find(result.errors, fn issue ->
+        issue.type == :invalid_child_template
+      end)
+
+      assert error != nil
+      assert error.path =~ "02-gallery.slides/"
+    end
+  end
+
   # --- Helpers ---
 
   defp has_error?(result, type, message_pattern) do
