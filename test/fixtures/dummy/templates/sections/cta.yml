@@ -6,3 +6,7 @@ fields:
     type: string
   body:
     type: richtext
+  button_text:
+    type: string
+  button_url:
+    type: url

@@ -103,7 +103,7 @@ defmodule Brix.ReaderTest do
 
   describe "read_sections/1" do
     test "reads YAML section files" do
-      sections_dir = Path.join(@fixtures, "pages/index/sections")
+      sections_dir = Path.join(@fixtures, "pages/index/versions/20240101T000000Z/sections")
       sections = Reader.read_sections(sections_dir)
 
       hero = Enum.find(sections, &(&1.template == "hero"))
@@ -114,7 +114,7 @@ defmodule Brix.ReaderTest do
     end
 
     test "reads markdown section files" do
-      sections_dir = Path.join(@fixtures, "pages/index/sections")
+      sections_dir = Path.join(@fixtures, "pages/index/versions/20240101T000000Z/sections")
       sections = Reader.read_sections(sections_dir)
 
       about = Enum.find(sections, &(&1.template == "richtext"))
@@ -125,7 +125,7 @@ defmodule Brix.ReaderTest do
     end
 
     test "orders sections by position prefix" do
-      sections_dir = Path.join(@fixtures, "pages/index/sections")
+      sections_dir = Path.join(@fixtures, "pages/index/versions/20240101T000000Z/sections")
       sections = Reader.read_sections(sections_dir)
 
       assert length(sections) == 2
@@ -192,9 +192,94 @@ defmodule Brix.ReaderTest do
     end
   end
 
+  describe "versions" do
+    test "page has versions list sorted by timestamp" do
+      pages = Reader.read_pages(@dummy)
+      ritual = Enum.find(pages, &(&1.slug == "/blog/morning-ritual"))
+
+      assert length(ritual.versions) == 2
+      [v1, v2] = ritual.versions
+      assert DateTime.compare(v1.version, v2.version) == :lt
+    end
+
+    test "page.sections comes from published version" do
+      pages = Reader.read_pages(@dummy)
+      ritual = Enum.find(pages, &(&1.slug == "/blog/morning-ritual"))
+
+      # Published version (20240901T060000Z) has 2 sections
+      assert length(ritual.sections) == 2
+      hero = hd(ritual.sections)
+      assert hero.fields["heading"] == "The Morning Ritual"
+    end
+
+    test "page.published_at comes from published version's version.yml" do
+      pages = Reader.read_pages(@dummy)
+      ritual = Enum.find(pages, &(&1.slug == "/blog/morning-ritual"))
+
+      assert ritual.published_at == ~U[2024-09-01 06:00:00Z]
+    end
+
+    test "page.updated_at comes from latest version's updated_at" do
+      pages = Reader.read_pages(@dummy)
+      ritual = Enum.find(pages, &(&1.slug == "/blog/morning-ritual"))
+
+      # Latest version is 20241115T140000Z with updated_at 2024-11-15T14:00:00Z
+      assert ritual.updated_at == ~U[2024-11-15 14:00:00Z]
+    end
+
+    test "page.published_version is a DateTime" do
+      pages = Reader.read_pages(@dummy)
+      ritual = Enum.find(pages, &(&1.slug == "/blog/morning-ritual"))
+
+      assert ritual.published_version == ~U[2024-09-01 06:00:00Z]
+    end
+
+    test "draft version has no published_at" do
+      pages = Reader.read_pages(@dummy)
+      ritual = Enum.find(pages, &(&1.slug == "/blog/morning-ritual"))
+
+      draft = Enum.find(ritual.versions, fn v ->
+        v.version == ~U[2024-11-15 14:00:00Z]
+      end)
+
+      assert draft.published_at == nil
+      assert draft.updated_at == ~U[2024-11-15 14:00:00Z]
+      assert length(draft.sections) == 3
+    end
+
+    test "single-version page works normally" do
+      pages = Reader.read_pages(@fixtures)
+      home = Enum.find(pages, &(&1.slug == "/"))
+
+      assert length(home.versions) == 1
+      assert length(home.sections) == 2
+      assert home.published_version == ~U[2024-01-01 00:00:00Z]
+    end
+  end
+
+  describe "compact ISO parsing" do
+    test "parse_compact_iso/1 parses valid timestamp" do
+      assert Reader.parse_compact_iso("20241001T080000Z") == ~U[2024-10-01 08:00:00Z]
+    end
+
+    test "parse_compact_iso/1 returns nil for invalid format" do
+      assert Reader.parse_compact_iso("not-a-timestamp") == nil
+      assert Reader.parse_compact_iso(nil) == nil
+    end
+
+    test "format_compact_iso/1 formats a DateTime" do
+      assert Reader.format_compact_iso(~U[2024-10-01 08:00:00Z]) == "20241001T080000Z"
+    end
+
+    test "round-trips correctly" do
+      dt = ~U[2024-11-15 14:00:00Z]
+      assert dt == Reader.parse_compact_iso(Reader.format_compact_iso(dt))
+    end
+  end
+
   describe "read_sections/1 with mixed sections" do
     test "merges .field.md content into sibling yml section" do
-      sections_dir = Path.join(@dummy, "pages/about/sections")
+      sections_dir = Path.join(@dummy, "pages/about/versions/20240315T090000Z/sections")
       sections = Reader.read_sections(sections_dir)
 
       cta = Enum.find(sections, &(&1.position == 3))
@@ -207,7 +292,7 @@ defmodule Brix.ReaderTest do
     end
 
     test "standalone .md sections still work alongside mixed" do
-      sections_dir = Path.join(@dummy, "pages/about/sections")
+      sections_dir = Path.join(@dummy, "pages/about/versions/20240315T090000Z/sections")
       sections = Reader.read_sections(sections_dir)
 
       story = Enum.find(sections, &(&1.position == 2))
@@ -217,7 +302,7 @@ defmodule Brix.ReaderTest do
 
     test "mixed .md file without matching yml is ignored" do
       # The about sections have 01-hero.yml, 02-story.md, 03-cta.yml + 03-cta.body.md
-      sections_dir = Path.join(@dummy, "pages/about/sections")
+      sections_dir = Path.join(@dummy, "pages/about/versions/20240315T090000Z/sections")
       sections = Reader.read_sections(sections_dir)
 
       assert length(sections) == 3

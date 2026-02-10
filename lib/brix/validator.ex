@@ -73,15 +73,16 @@ defmodule Brix.Validator do
     pages_dir = Path.join(content_dir, "pages")
 
     if File.dir?(pages_dir) do
-      pages_dir
-      |> find_section_dirs()
-      |> Enum.reduce(result, fn dir, acc ->
-        page_yml = Path.join(Path.dirname(dir), "page.yml")
+      # Find dirs that have page.yml OR versions/ (to catch orphans missing page.yml)
+      page_dirs = find_page_candidate_dirs(pages_dir)
+
+      Enum.reduce(page_dirs, result, fn page_dir, acc ->
+        page_yml = Path.join(page_dir, "page.yml")
 
         if File.exists?(page_yml) do
-          acc
+          check_version_dirs(acc, page_dir, content_dir)
         else
-          relative = Path.relative_to(Path.dirname(dir), content_dir)
+          relative = Path.relative_to(page_dir, content_dir)
           add_error(acc, relative, :missing_file, "page.yml not found in #{relative}")
         end
       end)
@@ -90,11 +91,52 @@ defmodule Brix.Validator do
     end
   end
 
-  defp find_section_dirs(pages_dir) do
-    pages_dir
-    |> Path.join("**/sections")
-    |> Path.wildcard()
-    |> Enum.filter(&File.dir?/1)
+  defp find_page_candidate_dirs(pages_dir) do
+    # Directories that contain page.yml
+    from_page_yml =
+      pages_dir
+      |> Path.join("**/page.yml")
+      |> Path.wildcard()
+      |> Enum.map(&Path.dirname/1)
+
+    # Directories that contain versions/ (catches orphans missing page.yml)
+    from_versions =
+      pages_dir
+      |> Path.join("**/versions")
+      |> Path.wildcard()
+      |> Enum.filter(&File.dir?/1)
+      |> Enum.map(&Path.dirname/1)
+
+    (from_page_yml ++ from_versions)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp check_version_dirs(result, page_dir, content_dir) do
+    versions_dir = Path.join(page_dir, "versions")
+
+    if File.dir?(versions_dir) do
+      version_dirs =
+        versions_dir
+        |> File.ls!()
+        |> Enum.filter(fn name ->
+          File.dir?(Path.join(versions_dir, name)) && Reader.parse_compact_iso(name) != nil
+        end)
+
+      Enum.reduce(version_dirs, result, fn name, acc ->
+        version_path = Path.join(versions_dir, name)
+        version_yml = Path.join(version_path, "version.yml")
+        relative = Path.relative_to(version_path, content_dir)
+
+        if File.exists?(version_yml) do
+          acc
+        else
+          add_error(acc, relative, :missing_file, "version.yml not found in #{relative}")
+        end
+      end)
+    else
+      result
+    end
   end
 
   # --- Referential integrity ---
@@ -116,14 +158,32 @@ defmodule Brix.Validator do
       |> check_ref(page_path, :layout, page.layout, index.layouts)
       |> check_list_refs(page_path, :author, page.authors, index.authors)
       |> check_list_refs(page_path, :tag, page.tags, index.tags)
+      |> check_published_version(page_path, page)
     end)
   end
 
-  defp check_section_references(result, pages, content_dir, index) do
+  defp check_published_version(result, page_path, page) do
+    if page.published_version do
+      version_ids = Enum.map(page.versions || [], & &1.version)
+
+      if page.published_version in version_ids do
+        result
+      else
+        add_error(result, page_path, :unresolved_reference,
+          "published_version references nonexistent version")
+      end
+    else
+      result
+    end
+  end
+
+  defp check_section_references(result, pages, _content_dir, index) do
     Enum.reduce(pages, result, fn page, acc ->
-      Enum.reduce(page.sections, acc, fn section, inner_acc ->
-        section_path = section_file_path(page, section, content_dir)
-        check_section_or_shared_ref(inner_acc, section_path, section, index)
+      Enum.reduce(page.versions || [], acc, fn version, ver_acc ->
+        Enum.reduce(version.sections, ver_acc, fn section, inner_acc ->
+          section_path = version_section_file_path(page, version, section)
+          check_section_or_shared_ref(inner_acc, section_path, section, index)
+        end)
       end)
     end)
   end
@@ -219,13 +279,15 @@ defmodule Brix.Validator do
 
   defp check_schemas(result, pages, index, templates_by_name) do
     Enum.reduce(pages, result, fn page, acc ->
-      Enum.reduce(page.sections, acc, fn section, inner_acc ->
-        case Map.get(templates_by_name, section.template) do
-          nil -> inner_acc  # template ref error already caught
-          template ->
-            section_path = section_file_path(page, section, nil)
-            validate_section_fields(inner_acc, section_path, section.fields, template, index)
-        end
+      Enum.reduce(page.versions || [], acc, fn version, ver_acc ->
+        Enum.reduce(version.sections, ver_acc, fn section, inner_acc ->
+          case Map.get(templates_by_name, section.template) do
+            nil -> inner_acc  # template ref error already caught
+            template ->
+              section_path = version_section_file_path(page, version, section)
+              validate_section_fields(inner_acc, section_path, section.fields, template, index)
+          end
+        end)
       end)
     end)
   end
@@ -350,13 +412,15 @@ defmodule Brix.Validator do
     "pages/#{slug_to_dir}/page.yml"
   end
 
-  defp section_file_path(page, section, _content_dir) do
+  defp version_section_file_path(page, version, section) do
     slug_to_dir = case page.slug do
       "/" -> "index"
       slug -> String.trim_leading(slug, "/")
     end
 
-    "pages/#{slug_to_dir}/sections/#{String.pad_leading(to_string(section.position), 2, "0")}-#{section.template}"
+    version_name = Reader.format_compact_iso(version.version)
+
+    "pages/#{slug_to_dir}/versions/#{version_name}/sections/#{String.pad_leading(to_string(section.position), 2, "0")}-#{section.template}"
   end
 
   # --- Helpers ---

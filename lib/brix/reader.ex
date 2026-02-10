@@ -5,7 +5,7 @@ defmodule Brix.Reader do
   All functions take a `content_dir` path as the root of the content tree.
   """
 
-  alias Brix.{Site, Author, Tag, Media, SectionTemplate, Section, SharedSection, Layout, Page, Collection}
+  alias Brix.{Site, Author, Tag, Media, SectionTemplate, Section, SharedSection, Layout, Page, Version, Collection}
 
   # --- Site ---
 
@@ -343,8 +343,16 @@ defmodule Brix.Reader do
 
   defp read_page(page_dir, pages_dir) do
     {:ok, data} = read_yaml(Path.join(page_dir, "page.yml"))
-    sections = read_sections(Path.join(page_dir, "sections"))
     derived_slug = derive_slug(page_dir, pages_dir)
+    published_version = parse_compact_iso(data["published_version"])
+
+    versions = read_versions(page_dir)
+
+    # Find the published version to populate top-level sections/published_at
+    pub = Enum.find(versions, fn v -> v.version == published_version end)
+
+    # updated_at is the latest version's updated_at
+    latest = versions |> Enum.max_by(& &1.version, DateTime, fn -> nil end)
 
     %Page{
       slug: data["slug"] || derived_slug,
@@ -355,12 +363,53 @@ defmodule Brix.Reader do
       og_description: data["og_description"],
       og_image: data["og_image"],
       layout: data["layout"],
-      sections: sections,
+      sections: if(pub, do: pub.sections, else: []),
       authors: data["authors"] || [],
       tags: data["tags"] || [],
-      published_at: parse_datetime(data["published_at"]),
+      published_at: if(pub, do: pub.published_at),
+      updated_at: if(latest, do: latest.updated_at),
+      published_version: published_version,
+      versions: versions,
       slug_history: data["slug_history"] || [],
       extra: data["extra"]
+    }
+  end
+
+  defp read_versions(page_dir) do
+    versions_dir = Path.join(page_dir, "versions")
+
+    if File.dir?(versions_dir) do
+      versions_dir
+      |> File.ls!()
+      |> Enum.filter(fn name ->
+        File.dir?(Path.join(versions_dir, name)) && parse_compact_iso(name) != nil
+      end)
+      |> Enum.map(fn name ->
+        read_version(Path.join(versions_dir, name), parse_compact_iso(name))
+      end)
+      |> Enum.sort_by(& &1.version, DateTime)
+    else
+      []
+    end
+  end
+
+  defp read_version(version_dir, version_dt) do
+    sections = read_sections(Path.join(version_dir, "sections"))
+    version_yml_path = Path.join(version_dir, "version.yml")
+
+    {published_at, updated_at} =
+      case read_yaml(version_yml_path) do
+        {:ok, data} ->
+          {parse_datetime(data["published_at"]), parse_datetime(data["updated_at"])}
+        {:error, _} ->
+          {nil, nil}
+      end
+
+    %Version{
+      version: version_dt,
+      published_at: published_at,
+      updated_at: updated_at,
+      sections: sections
     }
   end
 
@@ -395,6 +444,36 @@ defmodule Brix.Reader do
           section
       end
     end)
+  end
+
+  # --- Compact ISO helpers ---
+
+  @doc """
+  Parses a compact ISO timestamp directory name like "20241001T080000Z"
+  into a DateTime. Returns nil if the format doesn't match.
+  """
+  def parse_compact_iso(nil), do: nil
+
+  def parse_compact_iso(name) when is_binary(name) do
+    case Regex.run(~r/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, name) do
+      [_, y, mo, d, h, mi, s] ->
+        {:ok, dt, _} = DateTime.from_iso8601(
+          "#{y}-#{mo}-#{d}T#{h}:#{mi}:#{s}Z"
+        )
+        dt
+
+      nil ->
+        nil
+    end
+  end
+
+  @doc """
+  Formats a DateTime as a compact ISO string like "20241001T080000Z".
+  """
+  def format_compact_iso(%DateTime{} = dt) do
+    dt
+    |> DateTime.truncate(:second)
+    |> Calendar.strftime("%Y%m%dT%H%M%SZ")
   end
 
   # --- DateTime helpers ---

@@ -1,0 +1,6 @@
+template: cta
+fields:
+  heading: Ready to level up?
+  body: Visit us for a free tasting of our seasonal single-origin.
+  button_text: Book a tasting
+  button_url: /contact
