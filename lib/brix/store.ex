@@ -21,4 +21,5 @@ defmodule Brix.Store do
   @callback list_collection_pages(collection :: Brix.Collection.t()) :: [Brix.Page.t()]
   @callback get_section_template(name :: String.t()) :: {:ok, Brix.SectionTemplate.t()} | :error
   @callback list_section_templates() :: [Brix.SectionTemplate.t()]
+  @callback reload() :: :ok | {:error, term()}
 end

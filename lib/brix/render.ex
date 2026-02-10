@@ -34,7 +34,14 @@ defmodule Brix.Render do
   end
 
   defp render_section(module, section) do
-    func = String.to_existing_atom(section.template)
+    Code.ensure_loaded!(module)
+    func = String.to_atom(section.template)
+
+    unless function_exported?(module, func, 1) do
+      raise ArgumentError,
+            "no section renderer #{module}.#{func}/1 for template #{inspect(section.template)}"
+    end
+
     assigns = %{fields: section.fields, __changed__: %{}}
     apply(module, func, [assigns])
   end

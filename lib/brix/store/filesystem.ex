@@ -17,6 +17,11 @@ defmodule Brix.Store.Filesystem do
   end
 
   @impl Brix.Store
+  def reload do
+    GenServer.call(__MODULE__, :reload)
+  end
+
+  @impl Brix.Store
   def get_site do
     [{:site, site}] = :ets.lookup(__MODULE__, :site)
     site
@@ -247,6 +252,24 @@ defmodule Brix.Store.Filesystem do
     load_content(table, content_dir)
 
     {:ok, %{content_dir: content_dir}}
+  end
+
+  @impl GenServer
+  def handle_call(:reload, _from, %{content_dir: content_dir} = state) do
+    result = Validator.validate(content_dir)
+
+    if result.errors != [] do
+      {:reply, {:error, result.errors}, state}
+    else
+      for issue <- result.warnings do
+        require Logger
+        Logger.warning("Brix: #{issue.path}: #{issue.message}")
+      end
+
+      :ets.delete_all_objects(__MODULE__)
+      load_content(__MODULE__, content_dir)
+      {:reply, :ok, state}
+    end
   end
 
   defp load_content(table, content_dir) do

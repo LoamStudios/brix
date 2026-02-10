@@ -27,4 +27,5 @@ defmodule Brix do
   def list_collection_pages(collection), do: store().list_collection_pages(collection)
   def get_section_template(name), do: store().get_section_template(name)
   def list_section_templates, do: store().list_section_templates()
+  def reload, do: store().reload()
 end
