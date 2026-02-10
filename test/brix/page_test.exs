@@ -112,4 +112,50 @@ defmodule Brix.PageTest do
       refute Page.matches?(page, "nope")
     end
   end
+
+  describe "excerpt/2" do
+    @long_page %Page{
+      sections: [
+        %Section{template: "hero", position: 1, fields: %{"heading" => "Hello"}},
+        %Section{
+          template: "richtext",
+          position: 2,
+          fields: %{"body" => "<p>French press is forgiving and produces a full-bodied cup. The grind matters more than the beans.</p>"}
+        }
+      ]
+    }
+
+    test "returns plain text from sections with HTML stripped" do
+      excerpt = Page.excerpt(@long_page, 500)
+      refute excerpt =~ "<p>"
+      assert excerpt =~ "French press"
+    end
+
+    test "truncates to specified length on a word boundary" do
+      excerpt = Page.excerpt(@long_page, 30)
+      assert String.ends_with?(excerpt, "…")
+      assert String.length(excerpt) <= 35
+    end
+
+    test "does not truncate when content is shorter than length" do
+      excerpt = Page.excerpt(@long_page, 500)
+      refute String.ends_with?(excerpt, "…")
+    end
+
+    test "defaults to 200 characters" do
+      page = %Page{
+        sections: [
+          %Section{template: "richtext", position: 1, fields: %{"body" => String.duplicate("word ", 100)}}
+        ]
+      }
+
+      excerpt = Page.excerpt(page)
+      assert String.ends_with?(excerpt, "…")
+      assert String.length(excerpt) <= 205
+    end
+
+    test "handles page with nil sections" do
+      assert Page.excerpt(%Page{}) == ""
+    end
+  end
 end

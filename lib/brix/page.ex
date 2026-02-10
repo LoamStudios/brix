@@ -52,6 +52,28 @@ defmodule Brix.Page do
     if query == "", do: true, else: do_match?(page, String.downcase(query))
   end
 
+  @doc """
+  Returns a plain-text excerpt from the page's section content,
+  truncated to `length` characters (default 200). HTML tags are
+  stripped and whitespace is normalized. Appends "…" when truncated.
+  """
+  def excerpt(%__MODULE__{} = page, length \\ 200) do
+    text =
+      page.sections
+      |> List.wrap()
+      |> Enum.flat_map(&section_text/1)
+      |> Enum.join(" ")
+
+    if String.length(text) > length do
+      text
+      |> String.slice(0, length)
+      |> String.replace(~r/\s+\S*$/, "")
+      |> Kernel.<>("…")
+    else
+      text
+    end
+  end
+
   defp do_match?(page, query) do
     searchable_text(page)
     |> String.downcase()
