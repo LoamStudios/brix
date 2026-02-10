@@ -18,13 +18,16 @@ defmodule Brix.Validator do
     # Build an index of all known slugs for reference checking
     index = build_index(content_dir)
 
+    # Read content once, pass through all checks
+    pages = Reader.read_pages(content_dir)
+    layouts = Reader.read_layouts(content_dir)
     templates = Reader.read_section_templates(content_dir)
     templates_by_name = Map.new(templates, &{&1.name, &1})
 
     %{errors: [], warnings: []}
     |> check_structure(content_dir)
-    |> check_references(content_dir, index)
-    |> check_schemas(content_dir, index, templates_by_name)
+    |> check_references(content_dir, pages, layouts, index)
+    |> check_schemas(pages, index, templates_by_name)
   end
 
   # --- Index ---
@@ -96,18 +99,17 @@ defmodule Brix.Validator do
 
   # --- Referential integrity ---
 
-  defp check_references(result, content_dir, index) do
+  defp check_references(result, content_dir, pages, layouts, index) do
     result
-    |> check_page_references(content_dir, index)
-    |> check_section_references(content_dir, index)
-    |> check_layout_references(content_dir, index)
+    |> check_page_references(pages, content_dir, index)
+    |> check_section_references(pages, content_dir, index)
+    |> check_layout_references(layouts, index)
     |> check_media_files(content_dir)
     |> check_author_avatars(content_dir, index)
   end
 
-  defp check_page_references(result, content_dir, index) do
-    Reader.read_pages(content_dir)
-    |> Enum.reduce(result, fn page, acc ->
+  defp check_page_references(result, pages, content_dir, index) do
+    Enum.reduce(pages, result, fn page, acc ->
       page_path = page_yml_path(page, content_dir)
 
       acc
@@ -117,9 +119,8 @@ defmodule Brix.Validator do
     end)
   end
 
-  defp check_section_references(result, content_dir, index) do
-    Reader.read_pages(content_dir)
-    |> Enum.reduce(result, fn page, acc ->
+  defp check_section_references(result, pages, content_dir, index) do
+    Enum.reduce(pages, result, fn page, acc ->
       Enum.reduce(page.sections, acc, fn section, inner_acc ->
         section_path = section_file_path(page, section, content_dir)
         check_section_or_shared_ref(inner_acc, section_path, section, index)
@@ -127,9 +128,8 @@ defmodule Brix.Validator do
     end)
   end
 
-  defp check_layout_references(result, content_dir, index) do
-    Reader.read_layouts(content_dir)
-    |> Enum.reduce(result, fn layout, acc ->
+  defp check_layout_references(result, layouts, index) do
+    Enum.reduce(layouts, result, fn layout, acc ->
       layout_path = "layouts/#{layout.name}.yml"
       all_sections = layout.header_sections ++ layout.footer_sections
 
@@ -217,14 +217,13 @@ defmodule Brix.Validator do
 
   # --- Schema validation ---
 
-  defp check_schemas(result, content_dir, index, templates_by_name) do
-    Reader.read_pages(content_dir)
-    |> Enum.reduce(result, fn page, acc ->
+  defp check_schemas(result, pages, index, templates_by_name) do
+    Enum.reduce(pages, result, fn page, acc ->
       Enum.reduce(page.sections, acc, fn section, inner_acc ->
         case Map.get(templates_by_name, section.template) do
           nil -> inner_acc  # template ref error already caught
           template ->
-            section_path = section_file_path(page, section, content_dir)
+            section_path = section_file_path(page, section, nil)
             validate_section_fields(inner_acc, section_path, section.fields, template, index)
         end
       end)

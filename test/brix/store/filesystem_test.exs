@@ -260,6 +260,12 @@ defmodule Brix.Store.FilesystemTest do
       pages = Filesystem.list_pages(prefix: "/blog")
       assert length(pages) == 2
     end
+
+    test "raises on unknown filter key" do
+      assert_raise ArgumentError, ~r/unknown filter :foo/, fn ->
+        Filesystem.list_pages(foo: "bar")
+      end
+    end
   end
 
   describe "list_pages/1 with status filter" do

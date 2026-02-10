@@ -73,6 +73,10 @@ defmodule Brix.Store.Filesystem do
     |> filter_pages(rest)
   end
 
+  defp filter_pages(_pages, [{key, _value} | _rest]) do
+    raise ArgumentError, "unknown filter #{inspect(key)}. Valid filters: :tag, :author, :prefix, :status"
+  end
+
   @impl Brix.Store
   def get_layout(name) do
     case :ets.lookup(__MODULE__, {:layout, name}) do
