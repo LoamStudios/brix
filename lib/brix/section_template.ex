@@ -9,7 +9,7 @@ defmodule Brix.SectionTemplate do
   @type field_def :: %{
           type: atom(),
           required: boolean(),
-          of: atom() | nil
+          of: atom() | [String.t()] | nil
         }
 
   @type t :: %__MODULE__{
