@@ -189,11 +189,22 @@ defmodule Brix.Reader do
     fields =
       (data["fields"] || %{})
       |> Enum.into(%{}, fn {field_name, field_def} ->
+        type = String.to_atom(field_def["type"] || "string")
+
+        of_value =
+          case {type, field_def["of"]} do
+            {:sections, nil} -> nil
+            {:sections, list} when is_list(list) -> Enum.map(list, &to_string/1)
+            {:sections, single} -> [to_string(single)]
+            {_, nil} -> nil
+            {_, val} -> String.to_atom(val)
+          end
+
         {field_name,
          %{
-           type: String.to_atom(field_def["type"] || "string"),
+           type: type,
            required: field_def["required"] == true,
-           of: if(field_def["of"], do: String.to_atom(field_def["of"]))
+           of: of_value
          }}
       end)
 
@@ -224,26 +235,61 @@ defmodule Brix.Reader do
           section = read_yml_section(path)
           base = Path.basename(path, ".yml")
 
-          case Map.get(mixed_fields, base) do
-            nil ->
-              section
-
-            %{fields: extra_fields, source_fields: extra_source} ->
-              %Section{
+          section =
+            case Map.get(mixed_fields, base) do
+              nil ->
                 section
-                | fields: Map.merge(section.fields, extra_fields),
-                  source_fields: Map.merge(section.source_fields || %{}, extra_source)
-              }
-          end
+
+              %{fields: extra_fields, source_fields: extra_source} ->
+                %Section{
+                  section
+                  | fields: Map.merge(section.fields, extra_fields),
+                    source_fields: Map.merge(section.source_fields || %{}, extra_source)
+                }
+            end
+
+          attach_children(section, sections_dir, base)
         end)
 
-      md_sections = Enum.map(standalone_md, &read_md_section/1)
+      md_sections =
+        Enum.map(standalone_md, fn path ->
+          section = read_md_section(path)
+          base = Path.basename(path, ".md")
+          attach_children(section, sections_dir, base)
+        end)
 
       (yml_sections ++ md_sections)
       |> Enum.sort_by(& &1.position)
     else
       []
     end
+  end
+
+  defp attach_children(%Section{} = section, sections_dir, base) do
+    child_dirs = find_child_dirs(sections_dir, base)
+
+    if child_dirs == [] do
+      section
+    else
+      children =
+        Enum.into(child_dirs, %{}, fn {field_name, dir_path} ->
+          {field_name, read_sections(dir_path)}
+        end)
+
+      %Section{section | children: children}
+    end
+  end
+
+  defp find_child_dirs(sections_dir, base) do
+    sections_dir
+    |> File.ls!()
+    |> Enum.filter(fn name ->
+      File.dir?(Path.join(sections_dir, name)) and String.starts_with?(name, base <> ".")
+    end)
+    |> Enum.map(fn name ->
+      field_name = String.replace_prefix(name, base <> ".", "")
+      {field_name, Path.join(sections_dir, name)}
+    end)
   end
 
   defp read_yml_section(path) do
@@ -471,18 +517,33 @@ defmodule Brix.Reader do
   @spec resolve_sections([Brix.Section.t()], %{String.t() => Brix.SharedSection.t()}) :: [Brix.Section.t()]
   def resolve_sections(sections, shared_map) do
     Enum.map(sections, fn %Section{} = section ->
-      case section.fields do
-        %{"__shared_section_ref" => ref_name} ->
-          case Map.get(shared_map, ref_name) do
-            %SharedSection{} = shared ->
-              %Section{section | template: shared.template, fields: shared.fields}
+      resolved =
+        case section.fields do
+          %{"__shared_section_ref" => ref_name} ->
+            case Map.get(shared_map, ref_name) do
+              %SharedSection{} = shared ->
+                %Section{section | template: shared.template, fields: shared.fields}
 
-            nil ->
-              section
-          end
+              nil ->
+                section
+            end
 
-        _ ->
-          section
+          _ ->
+            section
+        end
+
+      # Recurse into children
+      case resolved.children do
+        children when children == %{} ->
+          resolved
+
+        children ->
+          resolved_children =
+            Enum.into(children, %{}, fn {field, child_sections} ->
+              {field, resolve_sections(child_sections, shared_map)}
+            end)
+
+          %Section{resolved | children: resolved_children}
       end
     end)
   end

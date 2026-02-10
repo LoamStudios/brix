@@ -1,0 +1,4 @@
+fields:
+  alt:
+    type: string
+    required: true
