@@ -1,0 +1,11 @@
+template: nav
+fields:
+  links:
+    - label: Home
+      url: /
+    - label: About
+      url: /about
+    - label: Menu
+      url: /menu
+    - label: Blog
+      url: /blog

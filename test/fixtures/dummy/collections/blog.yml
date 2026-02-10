@@ -1,0 +1,7 @@
+name: Blog
+filters:
+  prefix: /blog/
+sort_by: slug
+sort_direction: asc
+meta_title: Blog | Ember & Bloom
+meta_description: Thoughts on coffee, craft, and slowing down.

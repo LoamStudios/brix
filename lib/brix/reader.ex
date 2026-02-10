@@ -5,7 +5,7 @@ defmodule Brix.Reader do
   All functions take a `content_dir` path as the root of the content tree.
   """
 
-  alias Brix.{Site, Author, Tag, Media, SectionTemplate, Section, Layout, Page}
+  alias Brix.{Site, Author, Tag, Media, SectionTemplate, Section, SharedSection, Layout, Page, Collection}
 
   # --- Site ---
 
@@ -99,6 +99,65 @@ defmodule Brix.Reader do
     }
   end
 
+  # --- Shared Sections ---
+
+  def read_shared_sections(content_dir) do
+    content_dir
+    |> Path.join("shared_sections/*.yml")
+    |> Path.wildcard()
+    |> Enum.map(&read_shared_section/1)
+    |> Enum.sort_by(& &1.name)
+  end
+
+  defp read_shared_section(path) do
+    {:ok, data} = read_yaml(path)
+    name = path |> Path.basename(".yml")
+
+    %SharedSection{
+      name: name,
+      template: data["template"],
+      fields: data["fields"] || %{}
+    }
+  end
+
+  # --- Collections ---
+
+  def read_collections(content_dir) do
+    content_dir
+    |> Path.join("collections/*.yml")
+    |> Path.wildcard()
+    |> Enum.map(&read_collection/1)
+    |> Enum.sort_by(& &1.slug)
+  end
+
+  defp read_collection(path) do
+    {:ok, data} = read_yaml(path)
+    slug = path |> Path.basename(".yml")
+    filters = parse_filters(data["filters"] || %{})
+    direction = parse_sort_direction(data["sort_direction"])
+
+    %Collection{
+      slug: slug,
+      name: data["name"],
+      filters: filters,
+      sort_by: data["sort_by"],
+      sort_direction: direction,
+      meta_title: data["meta_title"],
+      meta_description: data["meta_description"],
+      og_title: data["og_title"],
+      og_description: data["og_description"],
+      og_image: data["og_image"],
+      extra: data["extra"]
+    }
+  end
+
+  defp parse_filters(raw) do
+    Enum.into(raw, %{}, fn {k, v} -> {String.to_atom(k), v} end)
+  end
+
+  defp parse_sort_direction("desc"), do: :desc
+  defp parse_sort_direction(_), do: :asc
+
   # --- Section Templates ---
 
   def read_section_templates(content_dir) do
@@ -148,11 +207,20 @@ defmodule Brix.Reader do
     {:ok, data} = read_yaml(path)
     {position, template} = parse_section_filename(path)
 
-    %Section{
-      template: data["template"] || template,
-      position: position,
-      fields: data["fields"] || %{}
-    }
+    if data["shared_section"] do
+      # Mark as a reference to be resolved later
+      %Section{
+        template: :shared_ref,
+        position: position,
+        fields: %{"__shared_section_ref" => data["shared_section"]}
+      }
+    else
+      %Section{
+        template: data["template"] || template,
+        position: position,
+        fields: data["fields"] || %{}
+      }
+    end
   end
 
   defp read_md_section(path) do
@@ -200,11 +268,19 @@ defmodule Brix.Reader do
     section_list
     |> Enum.with_index(1)
     |> Enum.map(fn {data, index} ->
-      %Section{
-        template: data["template"],
-        position: index,
-        fields: data["fields"] || %{}
-      }
+      if data["shared_section"] do
+        %Section{
+          template: :shared_ref,
+          position: index,
+          fields: %{"__shared_section_ref" => data["shared_section"]}
+        }
+      else
+        %Section{
+          template: data["template"],
+          position: index,
+          fields: data["fields"] || %{}
+        }
+      end
     end)
   end
 
@@ -258,6 +334,30 @@ defmodule Brix.Reader do
       "index" -> "/"
       path -> "/" <> path
     end
+  end
+
+  # --- Shared section resolution ---
+
+  @doc """
+  Resolves shared section references in a list of sections.
+  Takes a map of shared section name => %SharedSection{}.
+  """
+  def resolve_sections(sections, shared_map) do
+    Enum.map(sections, fn %Section{} = section ->
+      case section.fields do
+        %{"__shared_section_ref" => ref_name} ->
+          case Map.get(shared_map, ref_name) do
+            %SharedSection{} = shared ->
+              %Section{section | template: shared.template, fields: shared.fields}
+
+            nil ->
+              section
+          end
+
+        _ ->
+          section
+      end
+    end)
   end
 
   # --- YAML helpers ---

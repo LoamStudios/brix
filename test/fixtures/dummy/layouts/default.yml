@@ -1,0 +1,4 @@
+header_sections:
+  - shared_section: main-nav
+footer_sections:
+  - shared_section: site-footer

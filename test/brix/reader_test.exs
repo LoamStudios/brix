@@ -1,9 +1,10 @@
 defmodule Brix.ReaderTest do
   use ExUnit.Case, async: true
 
-  alias Brix.{Reader, Site, Author, Tag, Media, SectionTemplate, Section, Layout, Page}
+  alias Brix.{Reader, Site, Author, Tag, Media, SectionTemplate, Section, SharedSection, Layout, Page, Collection}
 
   @fixtures Path.expand("../fixtures/valid", __DIR__)
+  @dummy Path.expand("../fixtures/dummy", __DIR__)
 
   describe "read_site/1" do
     test "reads site.yml into a Site struct" do
@@ -188,6 +189,95 @@ defmodule Brix.ReaderTest do
 
     test "returns empty list when no pages directory" do
       assert Reader.read_pages("/nonexistent") == []
+    end
+  end
+
+  describe "read_shared_sections/1" do
+    test "reads all shared sections" do
+      shared = Reader.read_shared_sections(@dummy)
+      assert length(shared) == 2
+    end
+
+    test "parses shared section fields" do
+      shared = Reader.read_shared_sections(@dummy)
+      nav = Enum.find(shared, &(&1.name == "main-nav"))
+
+      assert %SharedSection{} = nav
+      assert nav.template == "nav"
+      assert length(nav.fields["links"]) == 4
+    end
+
+    test "returns empty list when no shared_sections directory" do
+      assert Reader.read_shared_sections(@fixtures) == []
+    end
+  end
+
+  describe "resolve_sections/2" do
+    test "resolves shared section references" do
+      shared_map = %{
+        "main-nav" => %SharedSection{
+          name: "main-nav",
+          template: "nav",
+          fields: %{"links" => [%{"label" => "Home", "url" => "/"}]}
+        }
+      }
+
+      sections = [
+        %Section{template: :shared_ref, position: 1, fields: %{"__shared_section_ref" => "main-nav"}},
+        %Section{template: "hero", position: 2, fields: %{"heading" => "Hello"}}
+      ]
+
+      resolved = Reader.resolve_sections(sections, shared_map)
+
+      assert hd(resolved).template == "nav"
+      assert hd(resolved).fields["links"] == [%{"label" => "Home", "url" => "/"}]
+      assert hd(resolved).position == 1
+      assert List.last(resolved).template == "hero"
+    end
+
+    test "leaves unresolved references intact" do
+      sections = [
+        %Section{template: :shared_ref, position: 1, fields: %{"__shared_section_ref" => "missing"}}
+      ]
+
+      resolved = Reader.resolve_sections(sections, %{})
+      assert hd(resolved).template == :shared_ref
+    end
+  end
+
+  describe "read_collections/1" do
+    test "reads all collections from collections/ directory" do
+      collections = Reader.read_collections(@dummy)
+      assert length(collections) == 2
+    end
+
+    test "parses collection fields" do
+      collections = Reader.read_collections(@dummy)
+      blog = Enum.find(collections, &(&1.slug == "blog"))
+
+      assert %Collection{} = blog
+      assert blog.name == "Blog"
+      assert blog.filters == %{prefix: "/blog/"}
+      assert blog.sort_by == "slug"
+      assert blog.sort_direction == :asc
+      assert blog.meta_title == "Blog | Ember & Bloom"
+      assert blog.meta_description == "Thoughts on coffee, craft, and slowing down."
+    end
+
+    test "parses desc sort direction" do
+      collections = Reader.read_collections(@dummy)
+      coffee = Enum.find(collections, &(&1.slug == "coffee-reads"))
+
+      assert coffee.sort_direction == :desc
+      assert coffee.filters == %{tag: "coffee"}
+    end
+
+    test "returns empty list when no collections directory" do
+      assert Reader.read_collections("/nonexistent") == []
+    end
+
+    test "returns empty list for fixtures without collections" do
+      assert Reader.read_collections(@fixtures) == []
     end
   end
 end

@@ -1,0 +1,5 @@
+template: hero
+fields:
+  heading: Our Story
+  subheading: From a garage roaster to your favorite corner shop.
+  image: maya-portrait

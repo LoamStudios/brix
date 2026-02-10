@@ -1,0 +1,13 @@
+template: menu_group
+fields:
+  title: Pastries
+  items:
+    - name: Butter Croissant
+      price: "4.00"
+      description: Laminated by hand, baked every morning
+    - name: Cardamom Morning Bun
+      price: "4.50"
+      description: Seasonal favorite — warm spice and orange zest
+    - name: Banana Bread
+      price: "3.50"
+      description: Brown butter, walnut, a little salty

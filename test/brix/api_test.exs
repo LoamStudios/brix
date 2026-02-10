@@ -25,6 +25,22 @@ defmodule Brix.ApiTest do
       assert length(pages) == 2
     end
 
+    test "list_pages/1 with tag filter" do
+      pages = Brix.list_pages(tag: "elixir")
+      assert length(pages) == 2
+    end
+
+    test "list_pages/1 with author filter" do
+      pages = Brix.list_pages(author: "jeff")
+      assert length(pages) == 2
+    end
+
+    test "list_pages/1 with prefix filter" do
+      pages = Brix.list_pages(prefix: "/blog/")
+      assert length(pages) == 1
+      assert hd(pages).slug == "/blog/hello-world"
+    end
+
     test "get_layout/1" do
       assert {:ok, layout} = Brix.get_layout("default")
       assert layout.name == "default"
@@ -55,6 +71,14 @@ defmodule Brix.ApiTest do
 
     test "list_media/0" do
       assert length(Brix.list_media()) == 1
+    end
+
+    test "get_collection/1 returns :error when no collections" do
+      assert :error = Brix.get_collection("blog")
+    end
+
+    test "list_collections/0 returns empty when no collections" do
+      assert Brix.list_collections() == []
     end
 
     test "get_section_template/1" do

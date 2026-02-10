@@ -1,0 +1,8 @@
+fields:
+  title:
+    type: string
+    required: true
+  items:
+    type: list
+    of: map
+    required: true

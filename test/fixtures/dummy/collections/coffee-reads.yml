@@ -1,0 +1,6 @@
+name: Coffee Reads
+filters:
+  tag: coffee
+sort_by: title
+sort_direction: desc
+meta_title: Coffee Reads | Ember & Bloom

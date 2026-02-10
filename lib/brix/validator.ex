@@ -35,7 +35,8 @@ defmodule Brix.Validator do
       authors: read_slugs(content_dir, "authors/*.yml"),
       tags: read_slugs(content_dir, "tags/*.yml"),
       media: read_slugs(content_dir, "media/*.yml"),
-      section_templates: read_slugs(content_dir, "templates/sections/*.yml")
+      section_templates: read_slugs(content_dir, "templates/sections/*.yml"),
+      shared_sections: read_slugs(content_dir, "shared_sections/*.yml")
     }
   end
 
@@ -121,8 +122,7 @@ defmodule Brix.Validator do
     |> Enum.reduce(result, fn page, acc ->
       Enum.reduce(page.sections, acc, fn section, inner_acc ->
         section_path = section_file_path(page, section, content_dir)
-
-        check_ref(inner_acc, section_path, :template, section.template, index.section_templates)
+        check_section_or_shared_ref(inner_acc, section_path, section, index)
       end)
     end)
   end
@@ -134,9 +134,19 @@ defmodule Brix.Validator do
       all_sections = layout.header_sections ++ layout.footer_sections
 
       Enum.reduce(all_sections, acc, fn section, inner_acc ->
-        check_ref(inner_acc, layout_path, :template, section.template, index.section_templates)
+        check_section_or_shared_ref(inner_acc, layout_path, section, index)
       end)
     end)
+  end
+
+  defp check_section_or_shared_ref(result, path, section, index) do
+    case section.fields do
+      %{"__shared_section_ref" => ref_name} ->
+        check_ref(result, path, :shared_section, ref_name, index.shared_sections)
+
+      _ ->
+        check_ref(result, path, :template, section.template, index.section_templates)
+    end
   end
 
   defp check_media_files(result, content_dir) do

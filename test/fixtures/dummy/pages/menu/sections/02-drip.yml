@@ -1,0 +1,13 @@
+template: menu_group
+fields:
+  title: Drip & Batch Brew
+  items:
+    - name: House Drip
+      price: "3.00"
+      description: Rotating single-origin, brewed fresh every hour
+    - name: Cold Brew
+      price: "4.50"
+      description: 18-hour steep, served over ice
+    - name: Pour Over
+      price: "5.00"
+      description: Kalita Wave, made to order

@@ -31,10 +31,34 @@ defmodule Brix.Store.Filesystem do
   end
 
   @impl Brix.Store
-  def list_pages do
+  def list_pages(opts \\ []) do
     :ets.match_object(__MODULE__, {{:page, :_}, :_})
     |> Enum.map(fn {_key, page} -> page end)
+    |> filter_pages(opts)
     |> Enum.sort_by(& &1.slug)
+  end
+
+  defp filter_pages(pages, []), do: pages
+
+  defp filter_pages(pages, [{:tag, tag} | rest]) do
+    pages
+    |> Enum.filter(&(tag in &1.tags))
+    |> filter_pages(rest)
+  end
+
+  defp filter_pages(pages, [{:author, author} | rest]) do
+    pages
+    |> Enum.filter(&(author in &1.authors))
+    |> filter_pages(rest)
+  end
+
+  defp filter_pages(pages, [{:prefix, prefix} | rest]) do
+    # Ensure prefix matching works with or without trailing slash
+    prefix = if String.ends_with?(prefix, "/"), do: prefix, else: prefix <> "/"
+
+    pages
+    |> Enum.filter(&String.starts_with?(&1.slug, prefix))
+    |> filter_pages(rest)
   end
 
   @impl Brix.Store
@@ -91,6 +115,54 @@ defmodule Brix.Store.Filesystem do
   end
 
   @impl Brix.Store
+  def get_shared_section(name) do
+    case :ets.lookup(__MODULE__, {:shared_section, name}) do
+      [{{:shared_section, _}, shared}] -> {:ok, shared}
+      [] -> :error
+    end
+  end
+
+  @impl Brix.Store
+  def list_shared_sections do
+    :ets.match_object(__MODULE__, {{:shared_section, :_}, :_})
+    |> Enum.map(fn {_key, shared} -> shared end)
+    |> Enum.sort_by(& &1.name)
+  end
+
+  @impl Brix.Store
+  def get_collection(slug) do
+    case :ets.lookup(__MODULE__, {:collection, slug}) do
+      [{{:collection, _}, collection}] -> {:ok, collection}
+      [] -> :error
+    end
+  end
+
+  @impl Brix.Store
+  def list_collections do
+    :ets.match_object(__MODULE__, {{:collection, :_}, :_})
+    |> Enum.map(fn {_key, collection} -> collection end)
+    |> Enum.sort_by(& &1.slug)
+  end
+
+  @impl Brix.Store
+  def list_collection_pages(%Brix.Collection{} = collection) do
+    filters = collection.filters |> Enum.into([])
+    pages = list_pages(filters)
+
+    case collection.sort_by do
+      nil -> pages
+      field -> sort_pages(pages, field, collection.sort_direction || :asc)
+    end
+  end
+
+  defp sort_pages(pages, "slug", direction), do: sort_by(pages, & &1.slug, direction)
+  defp sort_pages(pages, "title", direction), do: sort_by(pages, & &1.title, direction)
+  defp sort_pages(pages, _field, _direction), do: pages
+
+  defp sort_by(pages, key_fn, :asc), do: Enum.sort_by(pages, key_fn)
+  defp sort_by(pages, key_fn, :desc), do: Enum.sort_by(pages, key_fn, :desc)
+
+  @impl Brix.Store
   def get_section_template(name) do
     case :ets.lookup(__MODULE__, {:section_template, name}) do
       [{{:section_template, _}, template}] -> {:ok, template}
@@ -138,14 +210,27 @@ defmodule Brix.Store.Filesystem do
     {:ok, site} = Reader.read_site(content_dir)
     :ets.insert(table, {:site, site})
 
-    # Pages
-    for page <- Reader.read_pages(content_dir) do
-      :ets.insert(table, {{:page, page.slug}, page})
+    # Shared Sections (read first for resolution)
+    shared_sections = Reader.read_shared_sections(content_dir)
+    shared_map = Map.new(shared_sections, &{&1.name, &1})
+
+    for shared <- shared_sections do
+      :ets.insert(table, {{:shared_section, shared.name}, shared})
     end
 
-    # Layouts
+    # Pages (resolve shared section refs)
+    for page <- Reader.read_pages(content_dir) do
+      resolved = %{page | sections: Reader.resolve_sections(page.sections, shared_map)}
+      :ets.insert(table, {{:page, resolved.slug}, resolved})
+    end
+
+    # Layouts (resolve shared section refs)
     for layout <- Reader.read_layouts(content_dir) do
-      :ets.insert(table, {{:layout, layout.name}, layout})
+      resolved = %{layout |
+        header_sections: Reader.resolve_sections(layout.header_sections, shared_map),
+        footer_sections: Reader.resolve_sections(layout.footer_sections, shared_map)
+      }
+      :ets.insert(table, {{:layout, resolved.name}, resolved})
     end
 
     # Authors
@@ -161,6 +246,11 @@ defmodule Brix.Store.Filesystem do
     # Media
     for media <- Reader.read_media(content_dir) do
       :ets.insert(table, {{:media, media.slug}, media})
+    end
+
+    # Collections
+    for collection <- Reader.read_collections(content_dir) do
+      :ets.insert(table, {{:collection, collection.slug}, collection})
     end
 
     # Section Templates

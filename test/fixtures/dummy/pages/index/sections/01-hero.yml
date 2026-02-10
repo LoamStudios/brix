@@ -1,0 +1,5 @@
+template: hero
+fields:
+  heading: Coffee worth slowing down for
+  subheading: Single-origin beans roasted in small batches, right here in Portland.
+  image: storefront

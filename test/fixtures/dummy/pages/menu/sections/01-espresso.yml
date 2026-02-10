@@ -1,0 +1,16 @@
+template: menu_group
+fields:
+  title: Espresso Drinks
+  items:
+    - name: Espresso
+      price: "3.50"
+      description: Our daily single-origin pull
+    - name: Cortado
+      price: "4.50"
+      description: Equal parts espresso and steamed milk
+    - name: Oat Latte
+      price: "5.50"
+      description: Double shot with Minor Figures oat milk
+    - name: Ember Mocha
+      price: "6.00"
+      description: Dark chocolate, cayenne, espresso — our signature

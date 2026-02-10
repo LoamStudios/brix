@@ -5,6 +5,7 @@ defmodule Brix.Store.FilesystemTest do
   alias Brix.{Site, Page, Layout, Author, Tag, Media, SectionTemplate}
 
   @valid Path.expand("../../fixtures/valid", __DIR__)
+  @dummy Path.expand("../../fixtures/dummy", __DIR__)
   @missing_site Path.expand("../../fixtures/missing_site", __DIR__)
 
   describe "start_link/1 with valid content" do
@@ -199,6 +200,171 @@ defmodule Brix.Store.FilesystemTest do
     test "returns all section templates" do
       templates = Filesystem.list_section_templates()
       assert length(templates) == 4
+    end
+  end
+
+  describe "list_pages/1 with filters" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "no filters returns all pages" do
+      pages = Filesystem.list_pages()
+      assert length(pages) == 4
+    end
+
+    test "filter by tag" do
+      pages = Filesystem.list_pages(tag: "pastries")
+      assert length(pages) == 1
+      assert hd(pages).slug == "/menu"
+    end
+
+    test "filter by tag shared across pages" do
+      pages = Filesystem.list_pages(tag: "coffee")
+      slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+      assert slugs == ["/", "/about", "/blog/morning-ritual", "/menu"]
+    end
+
+    test "filter by author" do
+      pages = Filesystem.list_pages(author: "alex")
+      slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+      assert slugs == ["/about", "/menu"]
+    end
+
+    test "filter by prefix" do
+      pages = Filesystem.list_pages(prefix: "/blog/")
+      assert length(pages) == 1
+      assert hd(pages).slug == "/blog/morning-ritual"
+    end
+
+    test "compose tag + author" do
+      pages = Filesystem.list_pages(tag: "coffee", author: "alex")
+      slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+      assert slugs == ["/about", "/menu"]
+    end
+
+    test "compose tag + prefix" do
+      pages = Filesystem.list_pages(tag: "coffee", prefix: "/blog/")
+      assert length(pages) == 1
+      assert hd(pages).slug == "/blog/morning-ritual"
+    end
+
+    test "no matches returns empty list" do
+      assert Filesystem.list_pages(tag: "nonexistent") == []
+    end
+
+    test "prefix with no trailing slash still works" do
+      pages = Filesystem.list_pages(prefix: "/blog")
+      assert length(pages) == 1
+      assert hd(pages).slug == "/blog/morning-ritual"
+    end
+  end
+
+  describe "shared sections" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "get_shared_section/1 returns by name" do
+      assert {:ok, shared} = Filesystem.get_shared_section("main-nav")
+      assert shared.name == "main-nav"
+      assert shared.template == "nav"
+      assert length(shared.fields["links"]) == 4
+    end
+
+    test "get_shared_section/1 returns :error for unknown" do
+      assert :error = Filesystem.get_shared_section("nonexistent")
+    end
+
+    test "list_shared_sections/0 returns all" do
+      shared = Filesystem.list_shared_sections()
+      assert length(shared) == 2
+      names = Enum.map(shared, & &1.name)
+      assert "main-nav" in names
+      assert "site-footer" in names
+    end
+
+    test "layout shared section refs are resolved" do
+      {:ok, layout} = Filesystem.get_layout("default")
+      header = hd(layout.header_sections)
+      assert header.template == "nav"
+      assert length(header.fields["links"]) == 4
+
+      footer = hd(layout.footer_sections)
+      assert footer.template == "footer"
+      assert footer.fields["copyright"] == "2026 Ember & Bloom"
+    end
+  end
+
+  describe "get_collection/1" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "returns collection by slug" do
+      assert {:ok, collection} = Filesystem.get_collection("blog")
+      assert collection.name == "Blog"
+      assert collection.filters == %{prefix: "/blog/"}
+    end
+
+    test "returns :error for unknown slug" do
+      assert :error = Filesystem.get_collection("nonexistent")
+    end
+  end
+
+  describe "list_collections/0" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "returns all collections" do
+      collections = Filesystem.list_collections()
+      assert length(collections) == 2
+      slugs = Enum.map(collections, & &1.slug)
+      assert "blog" in slugs
+      assert "coffee-reads" in slugs
+    end
+  end
+
+  describe "list_collection_pages/1" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "resolves pages for a prefix-filtered collection" do
+      {:ok, collection} = Filesystem.get_collection("blog")
+      pages = Filesystem.list_collection_pages(collection)
+      assert length(pages) == 1
+      assert hd(pages).slug == "/blog/morning-ritual"
+    end
+
+    test "resolves pages for a tag-filtered collection" do
+      {:ok, collection} = Filesystem.get_collection("coffee-reads")
+      pages = Filesystem.list_collection_pages(collection)
+      assert length(pages) == 4
+    end
+
+    test "sorts by collection sort_by and sort_direction" do
+      {:ok, collection} = Filesystem.get_collection("coffee-reads")
+      pages = Filesystem.list_collection_pages(collection)
+      titles = Enum.map(pages, & &1.title)
+      assert titles == Enum.sort(titles, :desc)
+    end
+  end
+
+  describe "list_collections/0 with no collections" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @valid})
+      :ok
+    end
+
+    test "returns empty list" do
+      assert Filesystem.list_collections() == []
     end
   end
 
