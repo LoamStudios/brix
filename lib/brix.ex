@@ -19,6 +19,7 @@ defmodule Brix do
   def list_tags, do: store().list_tags()
   def get_media(slug), do: store().get_media(slug)
   def list_media, do: store().list_media()
+  def find_redirect(old_slug), do: store().find_redirect(old_slug)
   def get_shared_section(name), do: store().get_shared_section(name)
   def list_shared_sections, do: store().list_shared_sections()
   def get_collection(slug), do: store().get_collection(slug)

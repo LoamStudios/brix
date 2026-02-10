@@ -211,7 +211,7 @@ defmodule Brix.Store.FilesystemTest do
 
     test "no filters returns all pages" do
       pages = Filesystem.list_pages()
-      assert length(pages) == 4
+      assert length(pages) == 6
     end
 
     test "filter by tag" do
@@ -223,31 +223,33 @@ defmodule Brix.Store.FilesystemTest do
     test "filter by tag shared across pages" do
       pages = Filesystem.list_pages(tag: "coffee")
       slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
-      assert slugs == ["/", "/about", "/blog/morning-ritual", "/menu"]
+      assert slugs == ["/", "/about", "/blog/morning-ritual", "/blog/upcoming-roast", "/careers", "/menu"]
     end
 
     test "filter by author" do
       pages = Filesystem.list_pages(author: "alex")
       slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
-      assert slugs == ["/about", "/menu"]
+      assert slugs == ["/about", "/careers", "/menu"]
     end
 
     test "filter by prefix" do
       pages = Filesystem.list_pages(prefix: "/blog/")
-      assert length(pages) == 1
-      assert hd(pages).slug == "/blog/morning-ritual"
+      assert length(pages) == 2
+      slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+      assert slugs == ["/blog/morning-ritual", "/blog/upcoming-roast"]
     end
 
     test "compose tag + author" do
       pages = Filesystem.list_pages(tag: "coffee", author: "alex")
       slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
-      assert slugs == ["/about", "/menu"]
+      assert slugs == ["/about", "/careers", "/menu"]
     end
 
     test "compose tag + prefix" do
       pages = Filesystem.list_pages(tag: "coffee", prefix: "/blog/")
-      assert length(pages) == 1
-      assert hd(pages).slug == "/blog/morning-ritual"
+      assert length(pages) == 2
+      slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+      assert slugs == ["/blog/morning-ritual", "/blog/upcoming-roast"]
     end
 
     test "no matches returns empty list" do
@@ -256,8 +258,60 @@ defmodule Brix.Store.FilesystemTest do
 
     test "prefix with no trailing slash still works" do
       pages = Filesystem.list_pages(prefix: "/blog")
+      assert length(pages) == 2
+    end
+  end
+
+  describe "list_pages/1 with status filter" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "status: :published returns only published pages" do
+      pages = Filesystem.list_pages(status: :published)
+      slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+      # Home, About, Menu, Morning Ritual are in the past. Upcoming Roast is 2099. Careers has no published_at.
+      assert "/" in slugs
+      assert "/about" in slugs
+      assert "/menu" in slugs
+      assert "/blog/morning-ritual" in slugs
+      refute "/blog/upcoming-roast" in slugs
+      refute "/careers" in slugs
+    end
+
+    test "status: :draft returns only draft/scheduled pages" do
+      pages = Filesystem.list_pages(status: :draft)
+      slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+      assert "/blog/upcoming-roast" in slugs
+      assert "/careers" in slugs
+      refute "/" in slugs
+    end
+
+    test "status composes with other filters" do
+      pages = Filesystem.list_pages(status: :published, prefix: "/blog/")
       assert length(pages) == 1
       assert hd(pages).slug == "/blog/morning-ritual"
+    end
+  end
+
+  describe "find_redirect/1" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "finds redirect for old slug" do
+      assert {:ok, "/about"} = Filesystem.find_redirect("/about-us")
+      assert {:ok, "/about"} = Filesystem.find_redirect("/our-story")
+    end
+
+    test "finds redirect for blog slug history" do
+      assert {:ok, "/blog/morning-ritual"} = Filesystem.find_redirect("/blog/first-cup")
+    end
+
+    test "returns :error for unknown slug" do
+      assert :error = Filesystem.find_redirect("/nonexistent")
     end
   end
 
@@ -339,14 +393,15 @@ defmodule Brix.Store.FilesystemTest do
     test "resolves pages for a prefix-filtered collection" do
       {:ok, collection} = Filesystem.get_collection("blog")
       pages = Filesystem.list_collection_pages(collection)
-      assert length(pages) == 1
-      assert hd(pages).slug == "/blog/morning-ritual"
+      assert length(pages) == 2
+      slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+      assert slugs == ["/blog/morning-ritual", "/blog/upcoming-roast"]
     end
 
     test "resolves pages for a tag-filtered collection" do
       {:ok, collection} = Filesystem.get_collection("coffee-reads")
       pages = Filesystem.list_collection_pages(collection)
-      assert length(pages) == 4
+      assert length(pages) == 6
     end
 
     test "sorts by collection sort_by and sort_direction" do

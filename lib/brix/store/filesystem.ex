@@ -61,6 +61,18 @@ defmodule Brix.Store.Filesystem do
     |> filter_pages(rest)
   end
 
+  defp filter_pages(pages, [{:status, :published} | rest]) do
+    pages
+    |> Enum.filter(&Brix.Page.published?/1)
+    |> filter_pages(rest)
+  end
+
+  defp filter_pages(pages, [{:status, :draft} | rest]) do
+    pages
+    |> Enum.reject(&Brix.Page.published?/1)
+    |> filter_pages(rest)
+  end
+
   @impl Brix.Store
   def get_layout(name) do
     case :ets.lookup(__MODULE__, {:layout, name}) do
@@ -112,6 +124,14 @@ defmodule Brix.Store.Filesystem do
     :ets.match_object(__MODULE__, {{:media, :_}, :_})
     |> Enum.map(fn {_key, media} -> media end)
     |> Enum.sort_by(& &1.slug)
+  end
+
+  @impl Brix.Store
+  def find_redirect(old_slug) do
+    case :ets.lookup(__MODULE__, {:redirect, old_slug}) do
+      [{{:redirect, _}, current_slug}] -> {:ok, current_slug}
+      [] -> :error
+    end
   end
 
   @impl Brix.Store
@@ -218,10 +238,14 @@ defmodule Brix.Store.Filesystem do
       :ets.insert(table, {{:shared_section, shared.name}, shared})
     end
 
-    # Pages (resolve shared section refs)
+    # Pages (resolve shared section refs + build redirect index)
     for page <- Reader.read_pages(content_dir) do
       resolved = %{page | sections: Reader.resolve_sections(page.sections, shared_map)}
       :ets.insert(table, {{:page, resolved.slug}, resolved})
+
+      for old_slug <- resolved.slug_history || [] do
+        :ets.insert(table, {{:redirect, old_slug}, resolved.slug})
+      end
     end
 
     # Layouts (resolve shared section refs)

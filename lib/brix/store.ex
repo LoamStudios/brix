@@ -13,6 +13,7 @@ defmodule Brix.Store do
   @callback list_tags() :: [Brix.Tag.t()]
   @callback get_media(slug :: String.t()) :: {:ok, Brix.Media.t()} | :error
   @callback list_media() :: [Brix.Media.t()]
+  @callback find_redirect(old_slug :: String.t()) :: {:ok, String.t()} | :error
   @callback get_shared_section(name :: String.t()) :: {:ok, Brix.SharedSection.t()} | :error
   @callback list_shared_sections() :: [Brix.SharedSection.t()]
   @callback get_collection(slug :: String.t()) :: {:ok, Brix.Collection.t()} | :error

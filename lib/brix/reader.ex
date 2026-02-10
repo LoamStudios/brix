@@ -323,6 +323,8 @@ defmodule Brix.Reader do
       sections: sections,
       authors: data["authors"] || [],
       tags: data["tags"] || [],
+      published_at: parse_datetime(data["published_at"]),
+      slug_history: data["slug_history"] || [],
       extra: data["extra"]
     }
   end
@@ -359,6 +361,25 @@ defmodule Brix.Reader do
       end
     end)
   end
+
+  # --- DateTime helpers ---
+
+  defp parse_datetime(nil), do: nil
+  defp parse_datetime(%DateTime{} = dt), do: dt
+
+  defp parse_datetime(str) when is_binary(str) do
+    case DateTime.from_iso8601(str) do
+      {:ok, dt, _offset} -> dt
+      {:error, _} ->
+        # Try date-only format, treat as midnight UTC
+        case Date.from_iso8601(str) do
+          {:ok, date} -> DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
+          {:error, _} -> nil
+        end
+    end
+  end
+
+  defp parse_datetime(_), do: nil
 
   # --- YAML helpers ---
 
