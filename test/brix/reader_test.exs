@@ -192,6 +192,38 @@ defmodule Brix.ReaderTest do
     end
   end
 
+  describe "read_sections/1 with mixed sections" do
+    test "merges .field.md content into sibling yml section" do
+      sections_dir = Path.join(@dummy, "pages/about/sections")
+      sections = Reader.read_sections(sections_dir)
+
+      cta = Enum.find(sections, &(&1.position == 3))
+      assert %Section{} = cta
+      assert cta.template == "cta"
+      assert cta.fields["heading"] == "Come Visit Us"
+      assert cta.fields["subheading"] == "We'd love to meet you."
+      assert cta.fields["body"] =~ "seven days a week"
+      assert cta.fields["body"] =~ "<strong>"
+    end
+
+    test "standalone .md sections still work alongside mixed" do
+      sections_dir = Path.join(@dummy, "pages/about/sections")
+      sections = Reader.read_sections(sections_dir)
+
+      story = Enum.find(sections, &(&1.position == 2))
+      assert story.template == "richtext"
+      assert story.fields["body"] =~ "Maya started roasting"
+    end
+
+    test "mixed .md file without matching yml is ignored" do
+      # The about sections have 01-hero.yml, 02-story.md, 03-cta.yml + 03-cta.body.md
+      sections_dir = Path.join(@dummy, "pages/about/sections")
+      sections = Reader.read_sections(sections_dir)
+
+      assert length(sections) == 3
+    end
+  end
+
   describe "read_shared_sections/1" do
     test "reads all shared sections" do
       shared = Reader.read_shared_sections(@dummy)

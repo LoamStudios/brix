@@ -217,6 +217,31 @@ This is the about section with **bold** and *italic*.
 
 The markdown body becomes the `body` field, converted to HTML at load time.
 
+**Mixed sections** — structured YAML fields plus a richtext markdown field:
+
+A `.yml` file paired with a sibling `.field.md` file. The convention is `{position}-{name}.{fieldname}.md`:
+
+```
+sections/
+├── 03-cta.yml          # structured fields
+└── 03-cta.body.md      # richtext for the "body" field
+```
+
+`03-cta.yml`:
+```yaml
+template: cta
+fields:
+  heading: Come Visit Us
+  subheading: We'd love to meet you.
+```
+
+`03-cta.body.md`:
+```markdown
+We're open **seven days a week** in SE Portland.
+```
+
+The loader merges them into a single Section struct with all fields combined. The markdown is converted to HTML. This avoids awkward inline richtext in YAML files.
+
 **Shared section references** — reuse a shared section:
 
 ```yaml

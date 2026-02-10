@@ -193,8 +193,24 @@ defmodule Brix.Reader do
       yml_files = Path.wildcard(Path.join(sections_dir, "*.yml"))
       md_files = Path.wildcard(Path.join(sections_dir, "*.md"))
 
-      yml_sections = Enum.map(yml_files, &read_yml_section/1)
-      md_sections = Enum.map(md_files, &read_md_section/1)
+      # Separate mixed .field.md files from standalone .md sections
+      {mixed_md, standalone_md} = Enum.split_with(md_files, &mixed_md_file?/1)
+
+      # Build map of extra fields from mixed .md files: %{"03-cta" => %{"body" => "<p>...</p>"}}
+      mixed_fields = build_mixed_field_map(mixed_md)
+
+      yml_sections =
+        Enum.map(yml_files, fn path ->
+          section = read_yml_section(path)
+          base = Path.basename(path, ".yml")
+
+          case Map.get(mixed_fields, base) do
+            nil -> section
+            extra -> %Section{section | fields: Map.merge(section.fields, extra)}
+          end
+        end)
+
+      md_sections = Enum.map(standalone_md, &read_md_section/1)
 
       (yml_sections ++ md_sections)
       |> Enum.sort_by(& &1.position)
@@ -241,6 +257,25 @@ defmodule Brix.Reader do
       [_, position, name] -> {String.to_integer(position), name}
       nil -> {0, basename}
     end
+  end
+
+  # A mixed .md file has a dot in the basename (after removing .md extension)
+  # e.g. "03-cta.body.md" → basename "03-cta.body" → has dot → mixed
+  # vs   "02-intro.md"    → basename "02-intro"    → no dot  → standalone
+  defp mixed_md_file?(path) do
+    path |> Path.basename(".md") |> String.contains?(".")
+  end
+
+  defp build_mixed_field_map(mixed_md_files) do
+    Enum.reduce(mixed_md_files, %{}, fn path, acc ->
+      base = Path.basename(path, ".md")
+      parts = String.split(base, ".")
+      field_name = List.last(parts)
+      yml_base = parts |> Enum.drop(-1) |> Enum.join(".")
+      html = path |> File.read!() |> markdown_to_html()
+
+      Map.update(acc, yml_base, %{field_name => html}, &Map.put(&1, field_name, html))
+    end)
   end
 
   # --- Layouts ---

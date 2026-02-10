@@ -315,6 +315,29 @@ defmodule Brix.Store.FilesystemTest do
     end
   end
 
+  describe "mixed sections" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "mixed .field.md content is merged into yml section" do
+      assert {:ok, page} = Filesystem.get_page("/about")
+      cta = Enum.find(page.sections, &(&1.template == "cta"))
+
+      assert cta.fields["heading"] == "Come Visit Us"
+      assert cta.fields["body"] =~ "seven days a week"
+      assert cta.fields["body"] =~ "<strong>"
+    end
+
+    test "about page has all three sections" do
+      assert {:ok, page} = Filesystem.get_page("/about")
+      assert length(page.sections) == 3
+      templates = Enum.map(page.sections, & &1.template)
+      assert templates == ["hero", "richtext", "cta"]
+    end
+  end
+
   describe "shared sections" do
     setup do
       start_supervised!({Filesystem, content_dir: @dummy})
