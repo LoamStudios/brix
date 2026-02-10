@@ -347,11 +347,11 @@ defmodule Brix.Validator do
             "\"#{name}\" has value #{inspect(value)}, expected boolean")
         end
       :url ->
-        if is_binary(value) and Regex.match?(~r{^(/|https?://)}, value) do
+        if is_binary(value) and Regex.match?(~r{^(/|https?://|#)}, value) do
           result
         else
           add_error(result, path, :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected url (must start with /, http://, or https://)")
+            "\"#{name}\" has value #{inspect(value)}, expected url (must start with /, #, http://, or https://)")
         end
       :list ->
         if is_list(value) do
