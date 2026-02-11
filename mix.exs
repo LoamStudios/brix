@@ -16,7 +16,8 @@ defmodule Brix.MixProject do
           "README.md",
           "cheatsheets/api.cheatmd",
           "cheatsheets/content-structure.cheatmd",
-          "cheatsheets/rendering.cheatmd"
+          "cheatsheets/rendering.cheatmd",
+          "cheatsheets/cli.cheatmd"
         ],
         groups_for_extras: [
           Cheatsheets: ~r/cheatsheets\/.*/

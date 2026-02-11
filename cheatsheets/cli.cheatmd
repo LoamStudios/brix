@@ -1,0 +1,181 @@
+# CLI Quick Reference
+
+## Listing Content
+
+### Browse pages, templates, and sections
+{: .col-2}
+
+#### List all pages
+
+```bash
+mix brix.list pages
+# SLUG        TITLE       STATUS
+# /           Home        published
+# /about      About       published
+# /blog/hi    Hello       draft
+```
+
+#### List section templates
+
+```bash
+# Names only
+mix brix.list templates
+
+# With field details
+mix brix.list templates --verbose
+```
+
+#### List sections in a page
+
+```bash
+mix brix.list sections home
+
+# Specific version
+mix brix.list sections home --version 20260101T000000Z
+```
+
+## Creating Pages
+
+### Scaffold a new page with initial version
+
+```bash
+mix brix.gen.page contact
+mix brix.gen.page projects/my-app --title "My App"
+mix brix.gen.page landing --no-publish --layout marketing
+```
+
+#### What gets created
+
+```
+pages/{slug}/
+  page.yml
+  versions/{timestamp}/
+    version.yml
+    sections/
+```
+
+#### Options
+
+```
+--title TITLE       Page title (default: titleized slug)
+--layout NAME       Layout reference
+--no-publish        Omit published_version from page.yml
+--content-dir PATH  Content directory (default: priv/content)
+```
+
+## Adding Sections
+
+### Add a section to a page version
+{: .col-2}
+
+#### Basic usage
+
+```bash
+# Add a hero section (auto-positioned)
+mix brix.gen.section home hero
+
+# Specify position
+mix brix.gen.section home cta --position 10
+
+# Hyphens are normalized to underscores
+mix brix.gen.section home reviews-section
+```
+
+#### Nested children
+
+```bash
+# Add a child to a parent section
+mix brix.gen.section home testimonial_card \
+  --parent 05-reviews-section
+
+# Specify the children field name
+mix brix.gen.section home slide \
+  --parent 02-gallery --field slides
+```
+
+Child templates are validated against the parent's `of:` constraint.
+
+#### Options
+
+```
+--version VER       Target version (default: latest)
+--position NN       Section position (default: auto)
+--parent SECTION    Parent section file for nesting
+--field FIELD       Children field name (default: children)
+--content-dir PATH  Content directory (default: priv/content)
+```
+
+## Creating Versions
+
+### Create a new version of a page
+{: .col-2}
+
+#### Basic usage
+
+```bash
+# Empty new version
+mix brix.gen.version home
+
+# Copy sections from published version
+mix brix.gen.version home --copy
+
+# Copy and publish immediately
+mix brix.gen.version home --copy --publish
+
+# Copy from a specific version
+mix brix.gen.version home --copy \
+  --from 20260101T000000Z
+```
+
+#### Options
+
+```
+--copy              Copy sections from source version
+--from VER          Source version to copy (default: published)
+--publish           Update page.yml published_version
+--content-dir PATH  Content directory (default: priv/content)
+```
+
+## Validation
+
+### Validate content directory
+
+```bash
+mix brix.validate
+mix brix.validate path/to/content
+```
+
+## Common Workflows
+
+### Create a page end-to-end
+{: .col-2}
+
+#### New page with content
+
+```bash
+# 1. Create the page
+mix brix.gen.page services --title "Our Services"
+
+# 2. Add sections
+mix brix.gen.section services hero
+mix brix.gen.section services reviews_section
+
+# 3. Add children
+mix brix.gen.section services testimonial_card \
+  --parent 02-reviews-section
+
+# 4. Validate
+mix brix.validate
+```
+
+#### New version of existing page
+
+```bash
+# 1. Create version copying current content
+mix brix.gen.version home --copy
+
+# 2. Edit sections in the new version directory
+
+# 3. Publish when ready
+mix brix.gen.version home --publish
+```
