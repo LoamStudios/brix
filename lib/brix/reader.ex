@@ -624,7 +624,7 @@ defmodule Brix.Reader do
   end
 
   defp markdown_to_html(markdown) do
-    MDEx.to_html!(markdown)
+    MDEx.to_html!(markdown, render: [unsafe: true])
     |> String.trim()
   end
 end
