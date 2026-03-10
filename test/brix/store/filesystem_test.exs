@@ -498,6 +498,26 @@ defmodule Brix.Store.FilesystemTest do
       titles = Enum.map(pages, & &1.title)
       assert titles == Enum.sort(titles, :desc)
     end
+
+    test "advanced filter_groups collection filters correctly" do
+      {:ok, collection} = Filesystem.get_collection("coffee-by-maya")
+      pages = Filesystem.list_collection_pages(collection)
+
+      # Must have tag "coffee" AND author "maya"
+      for page <- pages do
+        assert "coffee" in page.tags
+        assert "maya" in page.authors
+      end
+    end
+
+    test "status draft collection returns only drafts" do
+      {:ok, collection} = Filesystem.get_collection("drafts")
+      pages = Filesystem.list_collection_pages(collection)
+
+      for page <- pages do
+        refute Brix.Page.published?(page)
+      end
+    end
   end
 
   describe "list_collections/0 with no collections" do

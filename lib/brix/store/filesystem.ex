@@ -8,6 +8,7 @@ defmodule Brix.Store.Filesystem do
   use GenServer
 
   alias Brix.{Reader, Validator}
+  alias Brix.Collection.FilterEngine
 
   # --- Client API ---
 
@@ -193,8 +194,11 @@ defmodule Brix.Store.Filesystem do
 
   @impl Brix.Store
   def list_collection_pages(%Brix.Collection{} = collection) do
-    filters = collection.filters |> Enum.into([])
-    pages = list_pages(filters)
+    all_pages =
+      :ets.match_object(__MODULE__, {{:page, :_}, :_})
+      |> Enum.map(fn {_key, page} -> page end)
+
+    pages = FilterEngine.evaluate(all_pages, collection.filter_groups, collection.group_logic)
 
     case collection.sort_by do
       nil -> pages
