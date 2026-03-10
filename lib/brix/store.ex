@@ -65,6 +65,9 @@ defmodule Brix.Store do
   @doc "Lists all collections."
   @callback list_collections() :: [Brix.Collection.t()]
 
+  @doc "Lists child collections whose `parent` matches the given slug."
+  @callback list_child_collections(parent_slug :: String.t()) :: [Brix.Collection.t()]
+
   @doc "Lists pages belonging to a collection, applying its filters and sort order."
   @callback list_collection_pages(collection :: Brix.Collection.t()) :: [Brix.Page.t()]
 

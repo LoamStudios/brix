@@ -1,0 +1,7 @@
+name: Bad Tag Ref
+filter_groups:
+  - logic: and
+    conditions:
+      - type: tag
+        value: nonexistent-tag
+sort_by: slug

@@ -6,6 +6,7 @@ defmodule Brix.Validator do
 
   alias Brix.Validator.Issue
   alias Brix.Reader
+  alias Brix.Collection.Condition
 
   @type result :: %{errors: [Issue.t()], warnings: [Issue.t()]}
 
@@ -24,10 +25,13 @@ defmodule Brix.Validator do
     templates = Reader.read_section_templates(content_dir)
     templates_by_name = Map.new(templates, &{&1.name, &1})
 
+    collections = Reader.read_collections(content_dir)
+
     %{errors: [], warnings: []}
     |> check_structure(content_dir)
     |> check_references(content_dir, pages, layouts, index)
     |> check_schemas(pages, index, templates_by_name)
+    |> check_collections(collections, index)
   end
 
   # --- Index ---
@@ -474,6 +478,104 @@ defmodule Brix.Validator do
       [{match, _score} | _] -> match
       [] -> nil
     end
+  end
+
+  # --- Collection validation ---
+
+  defp check_collections(result, collections, index) do
+    collection_slugs = MapSet.new(collections, & &1.slug)
+
+    Enum.reduce(collections, result, fn collection, acc ->
+      path = "collections/#{collection.slug}.yml"
+
+      acc
+      |> check_collection_parent(path, collection, collection_slugs)
+      |> check_collection_circular_parent(path, collection, collections)
+      |> check_collection_filter_groups(path, collection)
+      |> check_collection_condition_refs(path, collection, index)
+    end)
+  end
+
+  defp check_collection_parent(result, _path, %{parent: nil}, _collection_slugs), do: result
+
+  defp check_collection_parent(result, path, collection, collection_slugs) do
+    if MapSet.member?(collection_slugs, collection.parent) do
+      result
+    else
+      add_error(result, path, :unresolved_reference,
+        "parent \"#{collection.parent}\" not found")
+    end
+  end
+
+  defp check_collection_circular_parent(result, _path, %{parent: nil}, _collections), do: result
+
+  defp check_collection_circular_parent(result, path, collection, collections) do
+    by_slug = Map.new(collections, &{&1.slug, &1})
+
+    if circular_parent?(collection.slug, collection.parent, by_slug, MapSet.new()) do
+      add_error(result, path, :circular_reference,
+        "circular parent reference detected (#{collection.slug} -> #{collection.parent})")
+    else
+      result
+    end
+  end
+
+  defp circular_parent?(_origin, nil, _by_slug, _visited), do: false
+
+  defp circular_parent?(origin, current_slug, by_slug, visited) do
+    cond do
+      current_slug == origin -> true
+      MapSet.member?(visited, current_slug) -> false
+      true ->
+        case Map.get(by_slug, current_slug) do
+          nil -> false
+          collection -> circular_parent?(origin, collection.parent, by_slug, MapSet.put(visited, current_slug))
+        end
+    end
+  end
+
+  defp check_collection_filter_groups(result, _path, %{filter_groups: nil}), do: result
+  defp check_collection_filter_groups(result, _path, %{filter_groups: []}), do: result
+
+  defp check_collection_filter_groups(result, path, collection) do
+    Enum.reduce(collection.filter_groups, result, fn group, acc ->
+      unless group.logic in [:and, :or] do
+        add_error(acc, path, :invalid_filter_group,
+          "filter group logic must be \"and\" or \"or\", got: #{inspect(group.logic)}")
+      else
+        Enum.reduce(group.conditions, acc, fn condition, inner_acc ->
+          if condition.type in Condition.valid_types() do
+            inner_acc
+          else
+            add_error(inner_acc, path, :invalid_condition_type,
+              "unknown condition type \"#{condition.type}\" (valid: #{Condition.valid_types() |> Enum.join(", ")})")
+          end
+        end)
+      end
+    end)
+  end
+
+  defp check_collection_condition_refs(result, path, collection, index) do
+    groups = collection.filter_groups || []
+
+    Enum.reduce(groups, result, fn group, acc ->
+      Enum.reduce(group.conditions, acc, fn condition, inner_acc ->
+        case condition.type do
+          :tag ->
+            Enum.reduce(condition.value, inner_acc, fn v, a ->
+              check_ref(a, path, :tag, v, index.tags)
+            end)
+
+          :author ->
+            Enum.reduce(condition.value, inner_acc, fn v, a ->
+              check_ref(a, path, :author, v, index.authors)
+            end)
+
+          _ ->
+            inner_acc
+        end
+      end)
+    end)
   end
 
   # --- Path helpers ---

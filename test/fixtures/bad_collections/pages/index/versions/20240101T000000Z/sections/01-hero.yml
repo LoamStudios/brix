@@ -1,0 +1,5 @@
+template: hero
+fields:
+  heading: Hello, I'm Jeff
+  subheading: I build things
+  image: headshot

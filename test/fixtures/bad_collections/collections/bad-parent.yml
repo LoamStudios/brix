@@ -1,0 +1,5 @@
+name: Bad Parent
+parent: nonexistent-collection
+filters:
+  prefix: /blog/
+sort_by: slug

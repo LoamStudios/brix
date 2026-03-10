@@ -449,7 +449,7 @@ defmodule Brix.ReaderTest do
 
       assert group1.logic == :and
       tag_cond = Enum.find(group1.conditions, &(&1.type == :tag))
-      assert tag_cond.value == ["coffee", "brewing"]
+      assert tag_cond.value == ["coffee", "pastries"]
 
       prefix_cond = Enum.find(group1.conditions, &(&1.type == :prefix))
       assert prefix_cond.value == ["/blog/"]

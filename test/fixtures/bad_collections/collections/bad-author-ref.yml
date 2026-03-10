@@ -1,0 +1,7 @@
+name: Bad Author Ref
+filter_groups:
+  - logic: and
+    conditions:
+      - type: author
+        value: ghost-author
+sort_by: slug

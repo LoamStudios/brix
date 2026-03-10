@@ -472,6 +472,28 @@ defmodule Brix.Store.FilesystemTest do
     end
   end
 
+  describe "list_child_collections/1" do
+    setup do
+      start_supervised!({Filesystem, content_dir: @dummy})
+      :ok
+    end
+
+    test "returns children of a parent collection" do
+      children = Filesystem.list_child_collections("blog")
+      slugs = Enum.map(children, & &1.slug)
+
+      assert "coffee-by-maya" in slugs
+    end
+
+    test "returns empty list for collection with no children" do
+      assert Filesystem.list_child_collections("coffee-reads") == []
+    end
+
+    test "returns empty list for nonexistent parent" do
+      assert Filesystem.list_child_collections("nonexistent") == []
+    end
+  end
+
   describe "list_collection_pages/1" do
     setup do
       start_supervised!({Filesystem, content_dir: @dummy})

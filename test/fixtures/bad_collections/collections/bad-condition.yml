@@ -1,0 +1,7 @@
+name: Bad Condition
+filter_groups:
+  - logic: and
+    conditions:
+      - type: bogus_type
+        value: whatever
+sort_by: slug

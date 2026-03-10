@@ -188,6 +188,52 @@ defmodule Brix.ValidatorTest do
     end
   end
 
+  describe "collection validation" do
+    @bad_collections Path.expand("../fixtures/bad_collections", __DIR__)
+
+    test "errors when collection parent references nonexistent collection" do
+      result = Validator.validate(@bad_collections)
+
+      assert has_error?(result, :unresolved_reference, ~r/parent "nonexistent-collection" not found/)
+    end
+
+    test "errors on circular parent references" do
+      result = Validator.validate(@bad_collections)
+
+      assert has_error?(result, :circular_reference, ~r/circular parent reference.*circular-a/)
+      assert has_error?(result, :circular_reference, ~r/circular parent reference.*circular-b/)
+    end
+
+    test "errors on unknown condition type" do
+      result = Validator.validate(@bad_collections)
+
+      assert has_error?(result, :invalid_condition_type, ~r/unknown condition type "bogus_type"/)
+    end
+
+    test "errors when tag condition references nonexistent tag" do
+      result = Validator.validate(@bad_collections)
+
+      assert has_error?(result, :unresolved_reference, ~r/tag "nonexistent-tag" not found/)
+    end
+
+    test "errors when author condition references nonexistent author" do
+      result = Validator.validate(@bad_collections)
+
+      assert has_error?(result, :unresolved_reference, ~r/author "ghost-author" not found/)
+    end
+
+    test "valid collections in dummy fixture pass validation" do
+      dummy = Path.expand("../fixtures/dummy", __DIR__)
+      result = Validator.validate(dummy)
+
+      collection_errors = Enum.filter(result.errors, fn issue ->
+        String.starts_with?(issue.path, "collections/")
+      end)
+
+      assert collection_errors == []
+    end
+  end
+
   # --- Helpers ---
 
   defp has_error?(result, type, message_pattern) do

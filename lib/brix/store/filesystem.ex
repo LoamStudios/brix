@@ -193,6 +193,12 @@ defmodule Brix.Store.Filesystem do
   end
 
   @impl Brix.Store
+  def list_child_collections(parent_slug) do
+    list_collections()
+    |> Enum.filter(&(&1.parent == parent_slug))
+  end
+
+  @impl Brix.Store
   def list_collection_pages(%Brix.Collection{} = collection) do
     all_pages =
       :ets.match_object(__MODULE__, {{:page, :_}, :_})

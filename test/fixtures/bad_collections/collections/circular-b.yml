@@ -1,0 +1,4 @@
+name: Circular B
+parent: circular-a
+filters:
+  prefix: /blog/

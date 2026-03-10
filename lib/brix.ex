@@ -87,6 +87,10 @@ defmodule Brix do
   @spec list_collections() :: [Brix.Collection.t()]
   def list_collections, do: store().list_collections()
 
+  @doc "Lists child collections whose `parent` matches the given slug."
+  @spec list_child_collections(String.t()) :: [Brix.Collection.t()]
+  def list_child_collections(parent_slug), do: store().list_child_collections(parent_slug)
+
   @doc "Lists pages belonging to a collection, applying its filters and sort order."
   @spec list_collection_pages(Brix.Collection.t()) :: [Brix.Page.t()]
   def list_collection_pages(collection), do: store().list_collection_pages(collection)

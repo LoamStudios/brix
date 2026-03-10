@@ -6,7 +6,7 @@ filter_groups:
       - type: tag
         value:
           - coffee
-          - brewing
+          - pastries
       - type: prefix
         value: /blog/
   - logic: and

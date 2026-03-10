@@ -1,0 +1,4 @@
+template: hero
+fields:
+  heading: Hello World
+  image: headshot

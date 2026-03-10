@@ -1,0 +1,4 @@
+fields:
+  copyright:
+    type: string
+    required: true
