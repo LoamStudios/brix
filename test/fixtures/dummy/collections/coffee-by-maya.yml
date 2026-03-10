@@ -1,0 +1,15 @@
+name: Coffee by Maya
+description: Posts about coffee written by Maya
+parent: blog
+published_at: "2025-01-15T10:00:00Z"
+filter_groups:
+  - logic: and
+    conditions:
+      - type: tag
+        value: coffee
+      - type: author
+        value: maya
+group_logic: and
+sort_by: published_at
+sort_direction: desc
+meta_title: Coffee by Maya | Ember & Bloom

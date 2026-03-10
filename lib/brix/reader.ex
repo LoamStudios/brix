@@ -6,6 +6,7 @@ defmodule Brix.Reader do
   """
 
   alias Brix.{Site, Author, Tag, Media, SectionTemplate, Section, SharedSection, Layout, Page, Version, Collection}
+  alias Brix.Collection.{FilterGroup, Condition}
 
   # --- Site ---
 
@@ -147,11 +148,23 @@ defmodule Brix.Reader do
     slug = path |> Path.basename(".yml")
     filters = parse_filters(data["filters"] || %{})
     direction = parse_sort_direction(data["sort_direction"])
+    group_logic = parse_logic(data["group_logic"])
+
+    filter_groups =
+      case data["filter_groups"] do
+        groups when is_list(groups) -> Enum.map(groups, &parse_filter_group/1)
+        _ -> normalize_filters_to_groups(filters)
+      end
 
     %Collection{
       slug: slug,
       name: data["name"],
+      description: data["description"],
+      parent: data["parent"],
+      published_at: parse_datetime(data["published_at"]),
       filters: filters,
+      filter_groups: filter_groups,
+      group_logic: group_logic,
       sort_by: data["sort_by"],
       sort_direction: direction,
       meta_title: data["meta_title"],
@@ -166,6 +179,32 @@ defmodule Brix.Reader do
   defp parse_filters(raw) do
     Enum.into(raw, %{}, fn {k, v} -> {String.to_atom(k), v} end)
   end
+
+  defp parse_filter_group(data) when is_map(data) do
+    logic = parse_logic(data["logic"])
+    conditions = data["conditions"] |> List.wrap() |> Enum.map(&parse_condition/1)
+    %FilterGroup{logic: logic, conditions: conditions}
+  end
+
+  defp parse_condition(data) when is_map(data) do
+    type = data["type"] |> to_string() |> String.to_atom()
+    value = data["value"] |> List.wrap() |> Enum.map(&to_string/1)
+    %Condition{type: type, value: value}
+  end
+
+  defp normalize_filters_to_groups(filters) when filters == %{}, do: []
+
+  defp normalize_filters_to_groups(filters) do
+    conditions =
+      Enum.map(filters, fn {type, value} ->
+        %Condition{type: type, value: List.wrap(value) |> Enum.map(&to_string/1)}
+      end)
+
+    [%FilterGroup{logic: :and, conditions: conditions}]
+  end
+
+  defp parse_logic("or"), do: :or
+  defp parse_logic(_), do: :and
 
   defp parse_sort_direction("desc"), do: :desc
   defp parse_sort_direction(_), do: :asc

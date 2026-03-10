@@ -1,0 +1,8 @@
+name: Drafts
+filter_groups:
+  - logic: and
+    conditions:
+      - type: status
+        value: draft
+sort_by: updated_at
+sort_direction: desc

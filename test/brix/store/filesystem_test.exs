@@ -462,10 +462,13 @@ defmodule Brix.Store.FilesystemTest do
 
     test "returns all collections" do
       collections = Filesystem.list_collections()
-      assert length(collections) == 2
+      assert length(collections) == 5
       slugs = Enum.map(collections, & &1.slug)
       assert "blog" in slugs
       assert "coffee-reads" in slugs
+      assert "coffee-by-maya" in slugs
+      assert "multi-tag" in slugs
+      assert "drafts" in slugs
     end
   end
 
