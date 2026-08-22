@@ -91,9 +91,16 @@ defmodule Brix do
   @spec list_child_collections(String.t()) :: [Brix.Collection.t()]
   def list_child_collections(parent_slug), do: store().list_child_collections(parent_slug)
 
-  @doc "Lists pages belonging to a collection, applying its filters and sort order."
-  @spec list_collection_pages(Brix.Collection.t()) :: [Brix.Page.t()]
-  def list_collection_pages(collection), do: store().list_collection_pages(collection)
+  @doc """
+  Lists pages belonging to a collection, applying its filters and sort order.
+
+  ## Options
+
+    * `:status` — filter by publish status: `:published`, `:draft`, or `:all` (default `:published`)
+  """
+  @spec list_collection_pages(Brix.Collection.t(), keyword()) :: [Brix.Page.t()]
+  def list_collection_pages(collection, opts \\ []),
+    do: store().list_collection_pages(collection, opts)
 
   @doc "Fetches a section template by name."
   @spec get_section_template(String.t()) :: {:ok, Brix.SectionTemplate.t()} | :error

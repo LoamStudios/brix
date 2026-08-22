@@ -30,10 +30,30 @@ defmodule Brix.Store.Filesystem do
 
   @impl Brix.Store
   def get_page(slug, opts \\ []) do
+    opts = default_status(opts)
+
     case :ets.lookup(__MODULE__, {:page, slug}) do
-      [{{:page, _}, page}] -> resolve_version(page, opts)
-      [] -> :error
+      [{{:page, _}, page}] ->
+        if status_match?(page, Keyword.fetch!(opts, :status)),
+          do: resolve_version(page, opts),
+          else: :error
+
+      [] ->
+        :error
     end
+  end
+
+  # `:status` is absent far more often than it is passed, so the documented
+  # default has to be applied here rather than left to each caller.
+  defp default_status(opts), do: Keyword.put_new(opts, :status, :published)
+
+  defp status_match?(_page, :all), do: true
+  defp status_match?(page, :published), do: Brix.Page.published?(page)
+  defp status_match?(page, :draft), do: not Brix.Page.published?(page)
+
+  defp status_match?(_page, other) do
+    raise ArgumentError,
+          "unknown status #{inspect(other)}. Valid statuses: :published, :draft, :all"
   end
 
   defp resolve_version(page, []), do: {:ok, page}
@@ -58,7 +78,7 @@ defmodule Brix.Store.Filesystem do
   def list_pages(opts \\ []) do
     :ets.match_object(__MODULE__, {{:page, :_}, :_})
     |> Enum.map(fn {_key, page} -> page end)
-    |> filter_pages(opts)
+    |> filter_pages(default_status(opts))
     |> Enum.sort_by(& &1.slug)
   end
 
@@ -90,6 +110,8 @@ defmodule Brix.Store.Filesystem do
     |> Enum.filter(&Brix.Page.published?/1)
     |> filter_pages(rest)
   end
+
+  defp filter_pages(pages, [{:status, :all} | rest]), do: filter_pages(pages, rest)
 
   defp filter_pages(pages, [{:status, :draft} | rest]) do
     pages
@@ -199,10 +221,11 @@ defmodule Brix.Store.Filesystem do
   end
 
   @impl Brix.Store
-  def list_collection_pages(%Brix.Collection{} = collection) do
+  def list_collection_pages(%Brix.Collection{} = collection, opts \\ []) do
     all_pages =
       :ets.match_object(__MODULE__, {{:page, :_}, :_})
       |> Enum.map(fn {_key, page} -> page end)
+      |> filter_pages(default_status(opts))
 
     pages = FilterEngine.evaluate(all_pages, collection.filter_groups, collection.group_logic)
 

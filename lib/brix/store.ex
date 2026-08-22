@@ -68,8 +68,15 @@ defmodule Brix.Store do
   @doc "Lists child collections whose `parent` matches the given slug."
   @callback list_child_collections(parent_slug :: String.t()) :: [Brix.Collection.t()]
 
-  @doc "Lists pages belonging to a collection, applying its filters and sort order."
-  @callback list_collection_pages(collection :: Brix.Collection.t()) :: [Brix.Page.t()]
+  @doc """
+  Lists pages belonging to a collection, applying its filters and sort order.
+
+  ## Options
+
+    * `:status` — filter by publish status: `:published`, `:draft`, or `:all` (default `:published`)
+  """
+  @callback list_collection_pages(collection :: Brix.Collection.t(), opts :: keyword()) ::
+              [Brix.Page.t()]
 
   @doc "Fetches a section template by name."
   @callback get_section_template(name :: String.t()) :: {:ok, Brix.SectionTemplate.t()} | :error
