@@ -283,7 +283,7 @@ defmodule Brix.Reader do
                 %Section{
                   section
                   | fields: Map.merge(section.fields, extra_fields),
-                    source_fields: Map.merge(section.source_fields || %{}, extra_source)
+                    source_fields: Map.merge(section.source_fields, extra_source)
                 }
             end
 
@@ -340,13 +340,15 @@ defmodule Brix.Reader do
       %Section{
         template: :shared_ref,
         position: position,
-        fields: %{"__shared_section_ref" => data["shared_section"]}
+        fields: %{"__shared_section_ref" => data["shared_section"]},
+        source_fields: %{}
       }
     else
       %Section{
         template: data["template"] || template,
         position: position,
-        fields: data["fields"] || %{}
+        fields: data["fields"] || %{},
+        source_fields: %{}
       }
     end
   end
