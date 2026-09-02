@@ -1,5 +1,9 @@
 # Brix
 
+[![Hex.pm](https://img.shields.io/hexpm/v/brix.svg)](https://hex.pm/packages/brix)
+[![Hexdocs](https://img.shields.io/badge/hexdocs-brix-blue.svg)](https://hexdocs.pm/brix)
+[![License](https://img.shields.io/hexpm/l/brix.svg)](https://github.com/LoamStudios/brix/blob/main/LICENSE)
+
 A structured content layer for Phoenix LiveView apps. Write content as YAML and Markdown files, Brix validates, loads, and serves it.
 
 No GUI. No database (yet). Files are the authoring interface.
@@ -8,7 +12,7 @@ No GUI. No database (yet). Files are the authoring interface.
 
 ```elixir
 # mix.exs
-{:brix, path: "../brix"}   # local during dev
+{:brix, "~> 0.1.0"}
 
 # config/config.exs
 config :brix, store: Brix.Store.Filesystem

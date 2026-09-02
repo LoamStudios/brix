@@ -9,6 +9,9 @@ defmodule Brix.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       name: "Brix",
+      description:
+        "A structured content layer for Phoenix LiveView apps: YAML and Markdown files, validated, loaded, and served.",
+      package: package(),
       source_url: "https://github.com/LoamStudios/brix",
       docs: [
         main: "Brix",
@@ -23,6 +26,14 @@ defmodule Brix.MixProject do
           Cheatsheets: ~r/cheatsheets\/.*/
         ]
       ]
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/LoamStudios/brix"},
+      files: ~w(lib cheatsheets .formatter.exs mix.exs README.md LICENSE usage-rules.md)
     ]
   end
 
