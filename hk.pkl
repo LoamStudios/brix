@@ -1,0 +1,51 @@
+amends "package://github.com/jdx/hk/releases/download/v1.57.0/hk@1.57.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.57.0/hk@1.57.0#/Builtins.pkl"
+
+local universal_exclude = List("deps/**/*", "_build/**/*", "doc/**/*", "cover/**/*", ".claude/**/*", ".expert/**/*", "**/*.lock")
+
+local fast_linters = new Mapping<String, Step> {
+    ["trailing-whitespace"] = (Builtins.trailing_whitespace) {
+        exclude = universal_exclude
+    }
+    ["newlines"] = (Builtins.newlines) {
+        exclude = universal_exclude
+    }
+    ["check-merge-conflict"] = Builtins.check_merge_conflict
+    ["elixir-format"] = Builtins.mix_fmt
+}
+
+local linters = new Mapping<String, Step> {
+    ["trailing-whitespace"] = (Builtins.trailing_whitespace) {
+        exclude = universal_exclude
+    }
+    ["newlines"] = (Builtins.newlines) {
+        exclude = universal_exclude
+    }
+    ["check-merge-conflict"] = Builtins.check_merge_conflict
+    ["elixir-format"] = Builtins.mix_fmt
+    ["elixir-compile"] {
+        glob = List("**/*.ex", "**/*.exs")
+        check = "mix compile --warnings-as-errors"
+    }
+    ["credo"] {
+        glob = List("**/*.ex", "**/*.exs")
+        check = "mix credo --strict"
+    }
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        steps = fast_linters
+    }
+    ["pre-push"] {
+        steps = linters
+    }
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}

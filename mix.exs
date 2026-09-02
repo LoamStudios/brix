@@ -14,7 +14,7 @@ defmodule Brix.MixProject do
       package: package(),
       source_url: "https://github.com/LoamStudios/brix",
       docs: [
-        main: "Brix",
+        main: "readme",
         extras: [
           "README.md",
           "cheatsheets/api.cheatmd",
@@ -48,6 +48,7 @@ defmodule Brix.MixProject do
       {:yaml_elixir, "~> 2.11"},
       {:mdex, "~> 0.2"},
       {:phoenix_live_view, "~> 1.0"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.35", only: :dev, runtime: false}
     ]
   end
