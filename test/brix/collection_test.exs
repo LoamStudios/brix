@@ -2,7 +2,7 @@ defmodule Brix.CollectionTest do
   use ExUnit.Case, async: true
 
   alias Brix.Collection
-  alias Brix.Collection.{FilterGroup, Condition}
+  alias Brix.Collection.{Condition, FilterGroup}
 
   test "creates with all fields" do
     collection = %Collection{

@@ -1,7 +1,26 @@
 amends "package://github.com/jdx/hk/releases/download/v1.57.0/hk@1.57.0#/Config.pkl"
 import "package://github.com/jdx/hk/releases/download/v1.57.0/hk@1.57.0#/Builtins.pkl"
 
-local universal_exclude = List("deps/**/*", "_build/**/*", "doc/**/*", "cover/**/*", ".claude/**/*", ".expert/**/*", "**/*.lock")
+local universal_exclude = List(
+    "deps/**/*",
+    "_build/**/*",
+    "doc/**/*",
+    "cover/**/*",
+    ".claude/**/*",
+    ".expert/**/*",
+    // Byte-sensitive test data and generated artefacts: a whitespace fixer
+    // would corrupt binaries and can change what a fixture parses to.
+    "test/fixtures/**/*",
+    "bench/snapshots/**/*",
+    "**/*.lock",
+    "**/*.jpg",
+    "**/*.jpeg",
+    "**/*.png",
+    "**/*.gif",
+    "**/*.pdf",
+    "**/*.woff",
+    "**/*.woff2"
+)
 
 local fast_linters = new Mapping<String, Step> {
     ["trailing-whitespace"] = (Builtins.trailing_whitespace) {

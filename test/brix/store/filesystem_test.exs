@@ -1,8 +1,8 @@
 defmodule Brix.Store.FilesystemTest do
   use ExUnit.Case
 
+  alias Brix.{Author, Layout, Media, Page, SectionTemplate, Site, Tag}
   alias Brix.Store.Filesystem
-  alias Brix.{Site, Page, Layout, Author, Tag, Media, SectionTemplate}
 
   @valid Path.expand("../../fixtures/valid", __DIR__)
   @dummy Path.expand("../../fixtures/dummy", __DIR__)

@@ -6,7 +6,7 @@ defmodule Brix.Collection.FilterEngine do
   advanced collection filters. Pure function — no ETS dependency.
   """
 
-  alias Brix.Collection.{FilterGroup, Condition}
+  alias Brix.Collection.{Condition, FilterGroup}
   alias Brix.Page
 
   @doc """
@@ -71,36 +71,29 @@ defmodule Brix.Collection.FilterEngine do
   end
 
   defp evaluate_condition(page, %Condition{type: :published_after, value: values}) do
-    case page.published_at do
-      nil ->
-        false
-
-      published_at ->
-        Enum.all?(values, fn v ->
-          case parse_datetime(v) do
-            nil -> true
-            dt -> DateTime.compare(published_at, dt) != :lt
-          end
-        end)
-    end
+    compare_published_at(page.published_at, values, :lt)
   end
 
   defp evaluate_condition(page, %Condition{type: :published_before, value: values}) do
-    case page.published_at do
-      nil ->
-        false
-
-      published_at ->
-        Enum.all?(values, fn v ->
-          case parse_datetime(v) do
-            nil -> true
-            dt -> DateTime.compare(published_at, dt) != :gt
-          end
-        end)
-    end
+    compare_published_at(page.published_at, values, :gt)
   end
 
   defp evaluate_condition(_page, %Condition{}), do: true
+
+  # True when the page has a published_at that compares favourably against every
+  # parseable value. Unparseable values are ignored; an unpublished page fails.
+  defp compare_published_at(nil, _values, _excluded), do: false
+
+  defp compare_published_at(published_at, values, excluded) do
+    Enum.all?(values, &within_bound?(published_at, &1, excluded))
+  end
+
+  defp within_bound?(published_at, value, excluded) do
+    case parse_datetime(value) do
+      nil -> true
+      dt -> DateTime.compare(published_at, dt) != excluded
+    end
+  end
 
   defp parse_datetime(str) when is_binary(str) do
     case DateTime.from_iso8601(str) do

@@ -16,8 +16,12 @@ run = "hk fix --all"
 description = "Format and auto-fix the whole repository"
 
 [tasks.check]
+run = "hk check --all"
+description = "Format check, compile with warnings as errors, credo strict (whole repo)"
+
+[tasks."check:changed"]
 run = "hk check"
-description = "Format check, compile with warnings as errors, credo strict"
+description = "Same checks, limited to files changed since HEAD"
 
 [tasks.test]
 run = "mix test"

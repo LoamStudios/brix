@@ -3,7 +3,7 @@ defmodule Brix.RenderTest do
 
   import Phoenix.LiveViewTest
 
-  alias Brix.{Render, Section, Layout}
+  alias Brix.{Layout, Render, Section}
 
   @valid Path.expand("../fixtures/valid", __DIR__)
 

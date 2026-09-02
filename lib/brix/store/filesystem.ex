@@ -7,8 +7,8 @@ defmodule Brix.Store.Filesystem do
   @behaviour Brix.Store
   use GenServer
 
-  alias Brix.{Reader, Validator}
   alias Brix.Collection.FilterEngine
+  alias Brix.{Reader, Validator}
 
   # --- Client API ---
 
@@ -317,36 +317,53 @@ defmodule Brix.Store.Filesystem do
   end
 
   defp load_content(table, content_dir) do
-    # Site
     {:ok, site} = Reader.read_site(content_dir)
     :ets.insert(table, {:site, site})
 
-    # Shared Sections (read first for resolution)
+    # Shared sections are read first so pages and layouts can resolve refs.
+    shared_map = load_shared_sections(table, content_dir)
+
+    load_pages(table, content_dir, shared_map)
+    load_layouts(table, content_dir, shared_map)
+    load_simple_entries(table, content_dir)
+  end
+
+  # Inserts every shared section and returns them keyed by name for resolution.
+  defp load_shared_sections(table, content_dir) do
     shared_sections = Reader.read_shared_sections(content_dir)
-    shared_map = Map.new(shared_sections, &{&1.name, &1})
 
     for shared <- shared_sections do
       :ets.insert(table, {{:shared_section, shared.name}, shared})
     end
 
-    # Pages (resolve shared section refs in all versions + build redirect index)
+    Map.new(shared_sections, &{&1.name, &1})
+  end
+
+  # Inserts each page with its shared refs resolved, plus a redirect entry for
+  # every slug the page has previously been published under.
+  defp load_pages(table, content_dir, shared_map) do
     for page <- Reader.read_pages(content_dir) do
       resolved_versions =
         Enum.map(page.versions || [], fn version ->
           %{version | sections: Reader.resolve_sections(version.sections, shared_map)}
         end)
 
-      resolved_sections = Reader.resolve_sections(page.sections, shared_map)
+      resolved = %{
+        page
+        | sections: Reader.resolve_sections(page.sections, shared_map),
+          versions: resolved_versions
+      }
 
-      resolved = %{page | sections: resolved_sections, versions: resolved_versions}
       :ets.insert(table, {{:page, resolved.slug}, resolved})
 
       for old_slug <- resolved.slug_history || [] do
         :ets.insert(table, {{:redirect, old_slug}, resolved.slug})
       end
     end
+  end
 
-    # Layouts (resolve shared section refs)
+  # Inserts each layout with its header and footer shared refs resolved.
+  defp load_layouts(table, content_dir, shared_map) do
     for layout <- Reader.read_layouts(content_dir) do
       resolved = %{
         layout
@@ -356,28 +373,26 @@ defmodule Brix.Store.Filesystem do
 
       :ets.insert(table, {{:layout, resolved.name}, resolved})
     end
+  end
 
-    # Authors
+  # Content types that need no resolution: keyed straight into the table.
+  defp load_simple_entries(table, content_dir) do
     for author <- Reader.read_authors(content_dir) do
       :ets.insert(table, {{:author, author.slug}, author})
     end
 
-    # Tags
     for tag <- Reader.read_tags(content_dir) do
       :ets.insert(table, {{:tag, tag.slug}, tag})
     end
 
-    # Media
     for media <- Reader.read_media(content_dir) do
       :ets.insert(table, {{:media, media.slug}, media})
     end
 
-    # Collections
     for collection <- Reader.read_collections(content_dir) do
       :ets.insert(table, {{:collection, collection.slug}, collection})
     end
 
-    # Section Templates
     for template <- Reader.read_section_templates(content_dir) do
       :ets.insert(table, {{:section_template, template.name}, template})
     end

@@ -2,20 +2,20 @@ defmodule Brix.ReaderTest do
   use ExUnit.Case, async: true
 
   alias Brix.{
-    Reader,
-    Site,
     Author,
-    Tag,
-    Media,
-    SectionTemplate,
-    Section,
-    SharedSection,
+    Collection,
     Layout,
+    Media,
     Page,
-    Collection
+    Reader,
+    Section,
+    SectionTemplate,
+    SharedSection,
+    Site,
+    Tag
   }
 
-  alias Brix.Collection.{FilterGroup, Condition}
+  alias Brix.Collection.{Condition, FilterGroup}
 
   @fixtures Path.expand("../fixtures/valid", __DIR__)
   @dummy Path.expand("../fixtures/dummy", __DIR__)

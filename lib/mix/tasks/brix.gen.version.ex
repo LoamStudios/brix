@@ -106,41 +106,49 @@ defmodule Mix.Tasks.Brix.Gen.Version do
     case Keyword.get(opts, :from) do
       nil ->
         # Try published version first, then latest
-        page_yml = Path.join(page_dir, "page.yml")
-        {:ok, data} = YamlElixir.read_from_file(page_yml)
-
-        case data["published_version"] do
-          nil ->
-            case Brix.Gen.latest_version(page_dir) do
-              {_name, dir} ->
-                dir
-
-              nil ->
-                Mix.shell().error("No versions to copy from")
-                exit({:shutdown, 1})
-            end
-
-          ver ->
-            dir = Path.join([page_dir, "versions", ver])
-
-            if File.dir?(dir) do
-              dir
-            else
-              Mix.shell().error("Published version not found: #{ver}")
-              exit({:shutdown, 1})
-            end
-        end
+        resolve_default_source(page_dir)
 
       ver ->
-        dir = Path.join([page_dir, "versions", ver])
-
-        unless File.dir?(dir) do
-          Mix.shell().error("Source version not found: #{ver}")
-          exit({:shutdown, 1})
-        end
-
-        dir
+        existing_version_dir!(page_dir, ver, "Source version not found: #{ver}")
     end
+  end
+
+  # Falls back to the page's published version when `--from` is absent, else the latest one.
+  defp resolve_default_source(page_dir) do
+    page_yml = Path.join(page_dir, "page.yml")
+    {:ok, data} = YamlElixir.read_from_file(page_yml)
+
+    case data["published_version"] do
+      nil ->
+        latest_source!(page_dir)
+
+      ver ->
+        existing_version_dir!(page_dir, ver, "Published version not found: #{ver}")
+    end
+  end
+
+  # Returns the newest version directory, aborting when the page has no versions at all.
+  defp latest_source!(page_dir) do
+    case Brix.Gen.latest_version(page_dir) do
+      {_name, dir} ->
+        dir
+
+      nil ->
+        Mix.shell().error("No versions to copy from")
+        exit({:shutdown, 1})
+    end
+  end
+
+  # Returns the directory for a named version, aborting with `message` when it is missing.
+  defp existing_version_dir!(page_dir, ver, message) do
+    dir = Path.join([page_dir, "versions", ver])
+
+    unless File.dir?(dir) do
+      Mix.shell().error(message)
+      exit({:shutdown, 1})
+    end
+
+    dir
   end
 
   defp update_published_version(page_dir, timestamp) do

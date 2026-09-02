@@ -6,20 +6,20 @@ defmodule Brix.Reader do
   """
 
   alias Brix.{
-    Site,
     Author,
-    Tag,
-    Media,
-    SectionTemplate,
-    Section,
-    SharedSection,
+    Collection,
     Layout,
+    Media,
     Page,
-    Version,
-    Collection
+    Section,
+    SectionTemplate,
+    SharedSection,
+    Site,
+    Tag,
+    Version
   }
 
-  alias Brix.Collection.{FilterGroup, Condition}
+  alias Brix.Collection.{Condition, FilterGroup}
 
   # --- Site ---
 
@@ -284,23 +284,12 @@ defmodule Brix.Reader do
 
       yml_sections =
         Enum.map(yml_files, fn path ->
-          section = read_yml_section(path)
           base = Path.basename(path, ".yml")
 
-          section =
-            case Map.get(mixed_fields, base) do
-              nil ->
-                section
-
-              %{fields: extra_fields, source_fields: extra_source} ->
-                %Section{
-                  section
-                  | fields: Map.merge(section.fields, extra_fields),
-                    source_fields: Map.merge(section.source_fields, extra_source)
-                }
-            end
-
-          attach_children(section, sections_dir, base)
+          path
+          |> read_yml_section()
+          |> merge_mixed_fields(Map.get(mixed_fields, base))
+          |> attach_children(sections_dir, base)
         end)
 
       md_sections =
@@ -574,35 +563,53 @@ defmodule Brix.Reader do
         ]
   def resolve_sections(sections, shared_map) do
     Enum.map(sections, fn %Section{} = section ->
-      resolved =
-        case section.fields do
-          %{"__shared_section_ref" => ref_name} ->
-            case Map.get(shared_map, ref_name) do
-              %SharedSection{} = shared ->
-                %Section{section | template: shared.template, fields: shared.fields}
-
-              nil ->
-                section
-            end
-
-          _ ->
-            section
-        end
-
-      # Recurse into children
-      case resolved.children do
-        children when children == %{} ->
-          resolved
-
-        children ->
-          resolved_children =
-            Enum.into(children, %{}, fn {field, child_sections} ->
-              {field, resolve_sections(child_sections, shared_map)}
-            end)
-
-          %Section{resolved | children: resolved_children}
-      end
+      section
+      |> resolve_shared_ref(shared_map)
+      |> resolve_child_sections(shared_map)
     end)
+  end
+
+  # Folds the fields and raw bodies from any sibling .field.md files into a
+  # section read from YAML. Nil means the section had no mixed Markdown.
+  defp merge_mixed_fields(%Section{} = section, nil), do: section
+
+  defp merge_mixed_fields(%Section{} = section, %{
+         fields: extra_fields,
+         source_fields: extra_source
+       }) do
+    %Section{
+      section
+      | fields: Map.merge(section.fields, extra_fields),
+        source_fields: Map.merge(section.source_fields, extra_source)
+    }
+  end
+
+  # Replaces a section that is only a reference with the template and fields of
+  # the shared section it names. An unknown name is left for the validator.
+  defp resolve_shared_ref(%Section{fields: %{"__shared_section_ref" => ref}} = section, map) do
+    case Map.get(map, ref) do
+      %SharedSection{} = shared ->
+        %Section{section | template: shared.template, fields: shared.fields}
+
+      nil ->
+        section
+    end
+  end
+
+  defp resolve_shared_ref(%Section{} = section, _map), do: section
+
+  # Resolves shared references inside a section's nested children.
+  defp resolve_child_sections(%Section{children: children} = section, _shared_map)
+       when children == %{},
+       do: section
+
+  defp resolve_child_sections(%Section{children: children} = section, shared_map) do
+    resolved_children =
+      Enum.into(children, %{}, fn {field, child_sections} ->
+        {field, resolve_sections(child_sections, shared_map)}
+      end)
+
+    %Section{section | children: resolved_children}
   end
 
   # --- Compact ISO helpers ---

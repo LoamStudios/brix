@@ -57,8 +57,7 @@ defmodule Brix.Gen do
   """
   def to_yaml(pairs) do
     pairs
-    |> Enum.map(&yaml_pair/1)
-    |> Enum.join("\n")
+    |> Enum.map_join("\n", &yaml_pair/1)
     |> Kernel.<>("\n")
   end
 
@@ -68,9 +67,7 @@ defmodule Brix.Gen do
 
   defp yaml_pair({key, value}) when is_map(value) do
     nested =
-      value
-      |> Enum.map(fn {k, v} -> "  #{k}: #{yaml_scalar(v)}" end)
-      |> Enum.join("\n")
+      Enum.map_join(value, "\n", fn {k, v} -> "  #{k}: #{yaml_scalar(v)}" end)
 
     "#{key}:\n#{nested}"
   end
@@ -206,7 +203,7 @@ defmodule Brix.Gen do
       Mix.shell().info("warning: #{issue.path}: #{issue.message}")
     end
 
-    if length(result.errors) > 0, do: :error, else: :ok
+    if result.errors == [], do: :ok, else: :error
   end
 
   @doc """
@@ -244,8 +241,7 @@ defmodule Brix.Gen do
   def titleize(slug) do
     slug
     |> String.split("-")
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   @doc """

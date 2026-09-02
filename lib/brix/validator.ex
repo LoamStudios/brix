@@ -4,9 +4,9 @@ defmodule Brix.Validator do
   and section template schemas. Returns errors (block loading) and warnings (don't block).
   """
 
-  alias Brix.Validator.Issue
-  alias Brix.Reader
   alias Brix.Collection.Condition
+  alias Brix.Reader
+  alias Brix.Validator.Issue
 
   @type result :: %{errors: [Issue.t()], warnings: [Issue.t()]}
 
@@ -81,17 +81,22 @@ defmodule Brix.Validator do
       page_dirs = find_page_candidate_dirs(pages_dir)
 
       Enum.reduce(page_dirs, result, fn page_dir, acc ->
-        page_yml = Path.join(page_dir, "page.yml")
-
-        if File.exists?(page_yml) do
-          check_version_dirs(acc, page_dir, content_dir)
-        else
-          relative = Path.relative_to(page_dir, content_dir)
-          add_error(acc, relative, :missing_file, "page.yml not found in #{relative}")
-        end
+        check_page_dir(acc, page_dir, content_dir)
       end)
     else
       result
+    end
+  end
+
+  # Checks a candidate page directory has a page.yml, then walks its version dirs.
+  defp check_page_dir(result, page_dir, content_dir) do
+    page_yml = Path.join(page_dir, "page.yml")
+
+    if File.exists?(page_yml) do
+      check_version_dirs(result, page_dir, content_dir)
+    else
+      relative = Path.relative_to(page_dir, content_dir)
+      add_error(result, relative, :missing_file, "page.yml not found in #{relative}")
     end
   end
 
@@ -128,18 +133,22 @@ defmodule Brix.Validator do
         end)
 
       Enum.reduce(version_dirs, result, fn name, acc ->
-        version_path = Path.join(versions_dir, name)
-        version_yml = Path.join(version_path, "version.yml")
-        relative = Path.relative_to(version_path, content_dir)
-
-        if File.exists?(version_yml) do
-          acc
-        else
-          add_error(acc, relative, :missing_file, "version.yml not found in #{relative}")
-        end
+        check_version_dir(acc, Path.join(versions_dir, name), content_dir)
       end)
     else
       result
+    end
+  end
+
+  # Checks a single version directory contains a version.yml.
+  defp check_version_dir(result, version_path, content_dir) do
+    version_yml = Path.join(version_path, "version.yml")
+    relative = Path.relative_to(version_path, content_dir)
+
+    if File.exists?(version_yml) do
+      result
+    else
+      add_error(result, relative, :missing_file, "version.yml not found in #{relative}")
     end
   end
 
@@ -188,11 +197,16 @@ defmodule Brix.Validator do
   defp check_section_references(result, pages, _content_dir, index) do
     Enum.reduce(pages, result, fn page, acc ->
       Enum.reduce(page.versions || [], acc, fn version, ver_acc ->
-        Enum.reduce(version.sections, ver_acc, fn section, inner_acc ->
-          section_path = version_section_file_path(page, version, section)
-          check_section_or_shared_ref(inner_acc, section_path, section, index)
-        end)
+        check_version_section_refs(ver_acc, page, version, index)
       end)
+    end)
+  end
+
+  # Checks each section of one version resolves its template or shared-section ref.
+  defp check_version_section_refs(result, page, version, index) do
+    Enum.reduce(version.sections, result, fn section, acc ->
+      section_path = version_section_file_path(page, version, section)
+      check_section_or_shared_ref(acc, section_path, section, index)
     end)
   end
 
@@ -220,23 +234,26 @@ defmodule Brix.Validator do
   defp check_media_files(result, content_dir) do
     Reader.read_media(content_dir)
     |> Enum.reduce(result, fn media, acc ->
-      if media.path do
-        full_path = Path.join([content_dir, "media", media.path])
-
-        if File.exists?(full_path) do
-          acc
-        else
-          add_error(
-            acc,
-            "media/#{media.slug}.yml",
-            :missing_file,
-            "#{media.path} not found on disk"
-          )
-        end
-      else
-        acc
-      end
+      check_media_file(acc, media, content_dir)
     end)
+  end
+
+  # Checks a media entry's referenced file exists on disk.
+  defp check_media_file(result, %{path: nil}, _content_dir), do: result
+
+  defp check_media_file(result, media, content_dir) do
+    full_path = Path.join([content_dir, "media", media.path])
+
+    if File.exists?(full_path) do
+      result
+    else
+      add_error(
+        result,
+        "media/#{media.slug}.yml",
+        :missing_file,
+        "#{media.path} not found on disk"
+      )
+    end
   end
 
   defp check_author_avatars(result, content_dir, index) do
@@ -288,26 +305,31 @@ defmodule Brix.Validator do
   defp check_schemas(result, pages, index, templates_by_name) do
     Enum.reduce(pages, result, fn page, acc ->
       Enum.reduce(page.versions || [], acc, fn version, ver_acc ->
-        Enum.reduce(version.sections, ver_acc, fn section, inner_acc ->
-          case Map.get(templates_by_name, section.template) do
-            # template ref error already caught
-            nil ->
-              inner_acc
-
-            template ->
-              section_path = version_section_file_path(page, version, section)
-
-              validate_section_recursive(
-                inner_acc,
-                section_path,
-                section,
-                template,
-                index,
-                templates_by_name
-              )
-          end
-        end)
+        check_version_section_schemas(ver_acc, page, version, index, templates_by_name)
       end)
+    end)
+  end
+
+  # Validates each section of one version against its section template schema.
+  defp check_version_section_schemas(result, page, version, index, templates_by_name) do
+    Enum.reduce(version.sections, result, fn section, acc ->
+      case Map.get(templates_by_name, section.template) do
+        # template ref error already caught
+        nil ->
+          acc
+
+        template ->
+          section_path = version_section_file_path(page, version, section)
+
+          validate_section_recursive(
+            acc,
+            section_path,
+            section,
+            template,
+            index,
+            templates_by_name
+          )
+      end
     end)
   end
 
@@ -369,45 +391,56 @@ defmodule Brix.Validator do
       field_def = Map.get(template.fields, field_name)
 
       Enum.reduce(child_sections, acc, fn child, inner_acc ->
-        child_path =
-          "#{path}.#{field_name}/#{String.pad_leading(to_string(child.position), 2, "0")}-#{child.template}"
+        child_path = child_section_path(path, field_name, child)
 
-        # Check of constraint
-        inner_acc =
-          if field_def && field_def.type == :sections && field_def.of do
-            if child.template in field_def.of do
-              inner_acc
-            else
-              allowed = Enum.join(field_def.of, ", ")
-
-              add_error(
-                inner_acc,
-                child_path,
-                :invalid_child_template,
-                "template \"#{child.template}\" not allowed here (allowed: #{allowed})"
-              )
-            end
-          else
-            inner_acc
-          end
-
-        # Recursively validate child
-        case Map.get(templates_by_name, child.template) do
-          nil ->
-            inner_acc
-
-          child_template ->
-            validate_section_recursive(
-              inner_acc,
-              child_path,
-              child,
-              child_template,
-              index,
-              templates_by_name
-            )
-        end
+        inner_acc
+        |> check_child_template_allowed(child_path, child, field_def)
+        |> validate_child_section(child_path, child, index, templates_by_name)
       end)
     end)
+  end
+
+  # Builds the reported path for a child section nested under a sections field.
+  defp child_section_path(path, field_name, child) do
+    "#{path}.#{field_name}/#{String.pad_leading(to_string(child.position), 2, "0")}-#{child.template}"
+  end
+
+  # Checks a child section's template is permitted by the field's `of` constraint.
+  defp check_child_template_allowed(result, child_path, child, field_def) do
+    if field_def && field_def.type == :sections && field_def.of do
+      if child.template in field_def.of do
+        result
+      else
+        allowed = Enum.join(field_def.of, ", ")
+
+        add_error(
+          result,
+          child_path,
+          :invalid_child_template,
+          "template \"#{child.template}\" not allowed here (allowed: #{allowed})"
+        )
+      end
+    else
+      result
+    end
+  end
+
+  # Recursively validates a child section when its template is known.
+  defp validate_child_section(result, child_path, child, index, templates_by_name) do
+    case Map.get(templates_by_name, child.template) do
+      nil ->
+        result
+
+      child_template ->
+        validate_section_recursive(
+          result,
+          child_path,
+          child,
+          child_template,
+          index,
+          templates_by_name
+        )
+    end
   end
 
   defp check_unexpected_children(result, path, section, template) do
@@ -443,92 +476,97 @@ defmodule Brix.Validator do
     end)
   end
 
-  defp validate_type(result, path, name, value, field_def, index) do
-    case field_def.type do
-      # anything is a valid string
-      :string ->
-        result
+  # Strings are always valid, and richtext is validated structurally via .md files.
+  defp validate_type(result, _path, _name, _value, %{type: type}, _index)
+       when type in [:string, :richtext],
+       do: result
 
-      # validated structurally via .md files
-      :richtext ->
-        result
-
-      :media ->
-        if is_binary(value) and MapSet.member?(index.media, value) do
-          result
-        else
-          add_error(
-            result,
-            path,
-            :unresolved_reference,
-            "media \"#{value}\" not found in field \"#{name}\""
-          )
-        end
-
-      :integer ->
-        if is_integer(value) do
-          result
-        else
-          add_error(
-            result,
-            path,
-            :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected integer"
-          )
-        end
-
-      :boolean ->
-        if is_boolean(value) do
-          result
-        else
-          add_error(
-            result,
-            path,
-            :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected boolean"
-          )
-        end
-
-      :url ->
-        if is_binary(value) and Regex.match?(~r{^(/|https?://|#)}, value) do
-          result
-        else
-          add_error(
-            result,
-            path,
-            :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected url (must start with /, #, http://, or https://)"
-          )
-        end
-
-      :list ->
-        if is_list(value) do
-          result
-        else
-          add_error(
-            result,
-            path,
-            :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected list"
-          )
-        end
-
-      :map ->
-        if is_map(value) do
-          result
-        else
-          add_error(
-            result,
-            path,
-            :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected map"
-          )
-        end
-
-      _ ->
-        result
+  # Checks a media field references a known media slug.
+  defp validate_type(result, path, name, value, %{type: :media}, index) do
+    if is_binary(value) and MapSet.member?(index.media, value) do
+      result
+    else
+      add_error(
+        result,
+        path,
+        :unresolved_reference,
+        "media \"#{value}\" not found in field \"#{name}\""
+      )
     end
   end
+
+  # Checks an integer field holds an integer.
+  defp validate_type(result, path, name, value, %{type: :integer}, _index) do
+    if is_integer(value) do
+      result
+    else
+      add_error(
+        result,
+        path,
+        :type_mismatch,
+        "\"#{name}\" has value #{inspect(value)}, expected integer"
+      )
+    end
+  end
+
+  # Checks a boolean field holds a boolean.
+  defp validate_type(result, path, name, value, %{type: :boolean}, _index) do
+    if is_boolean(value) do
+      result
+    else
+      add_error(
+        result,
+        path,
+        :type_mismatch,
+        "\"#{name}\" has value #{inspect(value)}, expected boolean"
+      )
+    end
+  end
+
+  # Checks a url field is a string starting with /, #, http:// or https://.
+  defp validate_type(result, path, name, value, %{type: :url}, _index) do
+    if is_binary(value) and Regex.match?(~r{^(/|https?://|#)}, value) do
+      result
+    else
+      add_error(
+        result,
+        path,
+        :type_mismatch,
+        "\"#{name}\" has value #{inspect(value)}, expected url (must start with /, #, http://, or https://)"
+      )
+    end
+  end
+
+  # Checks a list field holds a list.
+  defp validate_type(result, path, name, value, %{type: :list}, _index) do
+    if is_list(value) do
+      result
+    else
+      add_error(
+        result,
+        path,
+        :type_mismatch,
+        "\"#{name}\" has value #{inspect(value)}, expected list"
+      )
+    end
+  end
+
+  # Checks a map field holds a map.
+  defp validate_type(result, path, name, value, %{type: :map}, _index) do
+    if is_map(value) do
+      result
+    else
+      add_error(
+        result,
+        path,
+        :type_mismatch,
+        "\"#{name}\" has value #{inspect(value)}, expected map"
+      )
+    end
+  end
+
+  # Any other field type carries no value-level checks.
+  defp validate_type(result, _path, _name, _value, _field_def, _index), do: result
 
   defp check_unknown_fields(result, path, fields, template) do
     known_fields = Map.keys(template.fields) |> MapSet.new()
@@ -537,20 +575,25 @@ defmodule Brix.Validator do
       if MapSet.member?(known_fields, name) do
         acc
       else
-        suggestion = fuzzy_match(name, MapSet.to_list(known_fields))
-
-        msg =
-          case suggestion do
-            nil ->
-              "unknown field \"#{name}\" (template: #{template.name})"
-
-            match ->
-              "unknown field \"#{name}\" — did you mean \"#{match}\"? (template: #{template.name})"
-          end
-
-        add_warning(acc, path, :unknown_field, msg)
+        add_warning(
+          acc,
+          path,
+          :unknown_field,
+          unknown_field_message(name, known_fields, template)
+        )
       end
     end)
+  end
+
+  # Builds the unknown-field warning, adding a fuzzy-matched suggestion when one is close.
+  defp unknown_field_message(name, known_fields, template) do
+    case fuzzy_match(name, MapSet.to_list(known_fields)) do
+      nil ->
+        "unknown field \"#{name}\" (template: #{template.name})"
+
+      match ->
+        "unknown field \"#{name}\" — did you mean \"#{match}\"? (template: #{template.name})"
+    end
   end
 
   defp fuzzy_match(input, candidates) do
@@ -638,26 +681,31 @@ defmodule Brix.Validator do
 
   defp check_collection_filter_groups(result, path, collection) do
     Enum.reduce(collection.filter_groups, result, fn group, acc ->
-      unless group.logic in [:and, :or] do
+      if group.logic in [:and, :or] do
+        check_filter_group_conditions(acc, path, group)
+      else
         add_error(
           acc,
           path,
           :invalid_filter_group,
           "filter group logic must be \"and\" or \"or\", got: #{inspect(group.logic)}"
         )
+      end
+    end)
+  end
+
+  # Checks every condition in a filter group uses a known condition type.
+  defp check_filter_group_conditions(result, path, group) do
+    Enum.reduce(group.conditions, result, fn condition, acc ->
+      if condition.type in Condition.valid_types() do
+        acc
       else
-        Enum.reduce(group.conditions, acc, fn condition, inner_acc ->
-          if condition.type in Condition.valid_types() do
-            inner_acc
-          else
-            add_error(
-              inner_acc,
-              path,
-              :invalid_condition_type,
-              "unknown condition type \"#{condition.type}\" (valid: #{Condition.valid_types() |> Enum.join(", ")})"
-            )
-          end
-        end)
+        add_error(
+          acc,
+          path,
+          :invalid_condition_type,
+          "unknown condition type \"#{condition.type}\" (valid: #{Condition.valid_types() |> Enum.join(", ")})"
+        )
       end
     end)
   end
@@ -667,23 +715,27 @@ defmodule Brix.Validator do
 
     Enum.reduce(groups, result, fn group, acc ->
       Enum.reduce(group.conditions, acc, fn condition, inner_acc ->
-        case condition.type do
-          :tag ->
-            Enum.reduce(condition.value, inner_acc, fn v, a ->
-              check_ref(a, path, :tag, v, index.tags)
-            end)
-
-          :author ->
-            Enum.reduce(condition.value, inner_acc, fn v, a ->
-              check_ref(a, path, :author, v, index.authors)
-            end)
-
-          _ ->
-            inner_acc
-        end
+        check_condition_refs(inner_acc, path, condition, index)
       end)
     end)
   end
+
+  # Checks tag conditions reference known tags.
+  defp check_condition_refs(result, path, %{type: :tag} = condition, index) do
+    Enum.reduce(condition.value, result, fn v, acc ->
+      check_ref(acc, path, :tag, v, index.tags)
+    end)
+  end
+
+  # Checks author conditions reference known authors.
+  defp check_condition_refs(result, path, %{type: :author} = condition, index) do
+    Enum.reduce(condition.value, result, fn v, acc ->
+      check_ref(acc, path, :author, v, index.authors)
+    end)
+  end
+
+  # Other condition types carry no reference checks.
+  defp check_condition_refs(result, _path, _condition, _index), do: result
 
   # --- Path helpers ---
 

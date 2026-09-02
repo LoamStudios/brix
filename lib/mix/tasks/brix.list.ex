@@ -75,35 +75,50 @@ defmodule Mix.Tasks.Brix.List do
 
     if Keyword.get(opts, :verbose, false) do
       for tmpl <- templates do
-        Mix.shell().info("\n#{tmpl.name}")
-
-        fields = tmpl.fields || %{}
-
-        if map_size(fields) == 0 do
-          Mix.shell().info("  (no fields)")
-        else
-          for {name, def} <- Enum.sort(fields) do
-            req = if def.required, do: " (required)", else: ""
-            of = if def.of, do: " of: #{inspect(def.of)}", else: ""
-            Mix.shell().info("  #{name}: #{def.type}#{req}#{of}")
-          end
-        end
+        print_template_detail(tmpl)
       end
     else
-      names = Enum.map(templates, & &1.name)
-      # Print in columns
-      max_len = names |> Enum.map(&String.length/1) |> Enum.max()
-      col_width = max_len + 2
-      term_width = 80
-      cols = max(div(term_width, col_width), 1)
-
-      names
-      |> Enum.chunk_every(cols)
-      |> Enum.each(fn row ->
-        line = Enum.map_join(row, fn name -> String.pad_trailing(name, col_width) end)
-        Mix.shell().info(line)
-      end)
+      print_template_columns(templates)
     end
+  end
+
+  # Prints one template's name followed by each of its field definitions.
+  defp print_template_detail(tmpl) do
+    Mix.shell().info("\n#{tmpl.name}")
+
+    fields = tmpl.fields || %{}
+
+    if map_size(fields) == 0 do
+      Mix.shell().info("  (no fields)")
+    else
+      for {name, def} <- Enum.sort(fields) do
+        print_field(name, def)
+      end
+    end
+  end
+
+  # Prints a single field definition line with its type, requiredness, and `of:` constraint.
+  defp print_field(name, def) do
+    req = if def.required, do: " (required)", else: ""
+    of = if def.of, do: " of: #{inspect(def.of)}", else: ""
+    Mix.shell().info("  #{name}: #{def.type}#{req}#{of}")
+  end
+
+  # Prints template names padded into 80-column-wide rows.
+  defp print_template_columns(templates) do
+    names = Enum.map(templates, & &1.name)
+    # Print in columns
+    max_len = names |> Enum.map(&String.length/1) |> Enum.max()
+    col_width = max_len + 2
+    term_width = 80
+    cols = max(div(term_width, col_width), 1)
+
+    names
+    |> Enum.chunk_every(cols)
+    |> Enum.each(fn row ->
+      line = Enum.map_join(row, fn name -> String.pad_trailing(name, col_width) end)
+      Mix.shell().info(line)
+    end)
   end
 
   defp list_sections(content_dir, slug, opts) do

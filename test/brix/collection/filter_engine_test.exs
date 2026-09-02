@@ -1,8 +1,7 @@
 defmodule Brix.Collection.FilterEngineTest do
   use ExUnit.Case, async: true
 
-  alias Brix.Collection.FilterEngine
-  alias Brix.Collection.{FilterGroup, Condition}
+  alias Brix.Collection.{Condition, FilterEngine, FilterGroup}
   alias Brix.Page
 
   @published_page %Page{
