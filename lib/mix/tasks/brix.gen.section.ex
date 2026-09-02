@@ -35,7 +35,9 @@ defmodule Mix.Tasks.Brix.Gen.Section do
 
     {slug, template_name} =
       case remaining do
-        [slug, template | _] -> {slug, template}
+        [slug, template | _] ->
+          {slug, template}
+
         _ ->
           Mix.shell().error("Usage: mix brix.gen.section SLUG TEMPLATE")
           exit({:shutdown, 1})
@@ -54,7 +56,9 @@ defmodule Mix.Tasks.Brix.Gen.Section do
 
     template =
       case Brix.Gen.find_template(templates, template_name) do
-        {:ok, tmpl} -> tmpl
+        {:ok, tmpl} ->
+          tmpl
+
         :error ->
           available = templates |> Map.keys() |> Enum.sort() |> Enum.join(", ")
           Mix.shell().error("Unknown template: #{template_name}")
@@ -126,7 +130,10 @@ defmodule Mix.Tasks.Brix.Gen.Section do
 
     unless parent_file do
       Mix.shell().error("Parent section not found: #{parent_name}")
-      available = sections_dir |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".yml")) |> Enum.sort()
+
+      available =
+        sections_dir |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".yml")) |> Enum.sort()
+
       Mix.shell().error("Available: #{Enum.join(available, ", ")}")
       exit({:shutdown, 1})
     end
@@ -148,6 +155,7 @@ defmodule Mix.Tasks.Brix.Gen.Section do
                   "Template '#{child_template.name}' not allowed as child of '#{parent_template_name}' " <>
                     "field '#{field}'. Allowed: #{Enum.join(allowed, ", ")}"
                 )
+
                 exit({:shutdown, 1})
               end
 
@@ -155,11 +163,17 @@ defmodule Mix.Tasks.Brix.Gen.Section do
               :ok
 
             nil ->
-              Mix.shell().error("Parent template '#{parent_template_name}' has no field '#{field}'")
+              Mix.shell().error(
+                "Parent template '#{parent_template_name}' has no field '#{field}'"
+              )
+
               exit({:shutdown, 1})
 
             %{type: type} ->
-              Mix.shell().error("Field '#{field}' in '#{parent_template_name}' is type :#{type}, not :sections")
+              Mix.shell().error(
+                "Field '#{field}' in '#{parent_template_name}' is type :#{type}, not :sections"
+              )
+
               exit({:shutdown, 1})
           end
 

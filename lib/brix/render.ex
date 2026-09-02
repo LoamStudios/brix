@@ -11,8 +11,8 @@ defmodule Brix.Render do
   function component in `module`. The component function name matches
   the section's template name.
   """
-  attr :sections, :list, required: true
-  attr :module, :atom, required: true
+  attr(:sections, :list, required: true)
+  attr(:module, :atom, required: true)
 
   def sections(assigns) do
     ~H"""
@@ -26,9 +26,9 @@ defmodule Brix.Render do
   Renders a layout by dispatching its header sections, yielding the inner block,
   then dispatching its footer sections.
   """
-  attr :layout, :map, required: true
-  attr :module, :atom, required: true
-  slot :inner_block, required: true
+  attr(:layout, :map, required: true)
+  attr(:module, :atom, required: true)
+  slot(:inner_block, required: true)
 
   def layout(assigns) do
     ~H"""
@@ -55,7 +55,13 @@ defmodule Brix.Render do
             "no section renderer #{module}.#{func}/1 for template #{inspect(section.template)}"
     end
 
-    assigns = %{fields: section.fields, children: section.children, module: module, __changed__: %{}}
+    assigns = %{
+      fields: section.fields,
+      children: section.children,
+      module: module,
+      __changed__: %{}
+    }
+
     apply(module, func, [assigns])
   end
 
@@ -74,9 +80,9 @@ defmodule Brix.Render do
         \"""
       end
   """
-  attr :module, :atom, required: true
-  attr :children, :map, required: true
-  attr :field, :string, required: true
+  attr(:module, :atom, required: true)
+  attr(:children, :map, required: true)
+  attr(:field, :string, required: true)
 
   def child_sections(assigns) do
     ~H"""

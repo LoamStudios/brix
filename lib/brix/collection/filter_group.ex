@@ -35,7 +35,8 @@ defmodule Brix.Collection.Condition do
 
   defstruct [:type, value: []]
 
-  @type condition_type :: :tag | :author | :prefix | :status | :published_after | :published_before
+  @type condition_type ::
+          :tag | :author | :prefix | :status | :published_after | :published_before
 
   @type t :: %__MODULE__{
           type: condition_type(),

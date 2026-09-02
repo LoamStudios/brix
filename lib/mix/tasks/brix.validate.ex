@@ -14,10 +14,11 @@ defmodule Mix.Tasks.Brix.Validate do
 
   @impl Mix.Task
   def run(args) do
-    content_dir = case args do
-      [path | _] -> Path.expand(path)
-      [] -> Path.expand("priv/content")
-    end
+    content_dir =
+      case args do
+        [path | _] -> Path.expand(path)
+        [] -> Path.expand("priv/content")
+      end
 
     unless File.dir?(content_dir) do
       Mix.shell().error("Directory not found: #{content_dir}")

@@ -69,7 +69,13 @@ defmodule Brix.Store.Filesystem do
             :error
 
           version ->
-            {:ok, %{page | sections: version.sections, published_at: version.published_at, updated_at: version.updated_at}}
+            {:ok,
+             %{
+               page
+               | sections: version.sections,
+                 published_at: version.published_at,
+                 updated_at: version.updated_at
+             }}
         end
     end
   end
@@ -120,7 +126,8 @@ defmodule Brix.Store.Filesystem do
   end
 
   defp filter_pages(_pages, [{key, _value} | _rest]) do
-    raise ArgumentError, "unknown filter #{inspect(key)}. Valid filters: :tag, :author, :prefix, :status"
+    raise ArgumentError,
+          "unknown filter #{inspect(key)}. Valid filters: :tag, :author, :prefix, :status"
   end
 
   @impl Brix.Store
@@ -237,7 +244,10 @@ defmodule Brix.Store.Filesystem do
 
   defp sort_pages(pages, "slug", direction), do: sort_by(pages, & &1.slug, direction)
   defp sort_pages(pages, "title", direction), do: sort_by(pages, & &1.title, direction)
-  defp sort_pages(pages, "published_at", direction), do: sort_by(pages, & &1.published_at, direction)
+
+  defp sort_pages(pages, "published_at", direction),
+    do: sort_by(pages, & &1.published_at, direction)
+
   defp sort_pages(pages, "updated_at", direction), do: sort_by(pages, & &1.updated_at, direction)
   defp sort_pages(pages, _field, _direction), do: pages
 
@@ -267,9 +277,10 @@ defmodule Brix.Store.Filesystem do
     result = Validator.validate(content_dir)
 
     if result.errors != [] do
-      messages = Enum.map(result.errors, fn issue ->
-        "  #{issue.path}: #{issue.message}"
-      end)
+      messages =
+        Enum.map(result.errors, fn issue ->
+          "  #{issue.path}: #{issue.message}"
+        end)
 
       raise "Brix content validation failed:\n#{Enum.join(messages, "\n")}"
     end
@@ -337,10 +348,12 @@ defmodule Brix.Store.Filesystem do
 
     # Layouts (resolve shared section refs)
     for layout <- Reader.read_layouts(content_dir) do
-      resolved = %{layout |
-        header_sections: Reader.resolve_sections(layout.header_sections, shared_map),
-        footer_sections: Reader.resolve_sections(layout.footer_sections, shared_map)
+      resolved = %{
+        layout
+        | header_sections: Reader.resolve_sections(layout.header_sections, shared_map),
+          footer_sections: Reader.resolve_sections(layout.footer_sections, shared_map)
       }
+
       :ets.insert(table, {{:layout, resolved.name}, resolved})
     end
 

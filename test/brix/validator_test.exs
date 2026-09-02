@@ -81,7 +81,11 @@ defmodule Brix.ValidatorTest do
     test "errors when section references nonexistent template" do
       result = Validator.validate(@bad_refs)
 
-      assert has_error?(result, :unresolved_reference, ~r/template "nonexistent_template" not found/)
+      assert has_error?(
+               result,
+               :unresolved_reference,
+               ~r/template "nonexistent_template" not found/
+             )
     end
 
     test "errors when layout section references nonexistent template" do
@@ -137,7 +141,11 @@ defmodule Brix.ValidatorTest do
     test "warns on unknown field with fuzzy suggestion" do
       result = Validator.validate(@bad_schema)
 
-      assert has_warning?(result, :unknown_field, ~r/unknown field "headign".*did you mean "heading"/)
+      assert has_warning?(
+               result,
+               :unknown_field,
+               ~r/unknown field "headign".*did you mean "heading"/
+             )
     end
   end
 
@@ -155,7 +163,11 @@ defmodule Brix.ValidatorTest do
     test "errors when child template violates of constraint" do
       result = Validator.validate(@bad_nested)
 
-      assert has_error?(result, :invalid_child_template, ~r/template "wrong" not allowed.*allowed: slide/)
+      assert has_error?(
+               result,
+               :invalid_child_template,
+               ~r/template "wrong" not allowed.*allowed: slide/
+             )
     end
 
     test "errors when required sections field has no children" do
@@ -166,22 +178,31 @@ defmodule Brix.ValidatorTest do
       # the slide child (02-slide.yml) is missing.
       result = Validator.validate(@bad_nested)
 
-      assert has_error?(result, :missing_required_field, ~r/missing required field "heading".*template: slide/)
+      assert has_error?(
+               result,
+               :missing_required_field,
+               ~r/missing required field "heading".*template: slide/
+             )
     end
 
     test "warns when children directory has no matching sections field" do
       result = Validator.validate(@bad_nested)
 
-      assert has_warning?(result, :unexpected_children, ~r/children directory "orphans" has no matching sections field/)
+      assert has_warning?(
+               result,
+               :unexpected_children,
+               ~r/children directory "orphans" has no matching sections field/
+             )
     end
 
     test "error paths include nesting" do
       result = Validator.validate(@bad_nested)
 
       # Find the invalid_child_template error and check its path includes nesting
-      error = Enum.find(result.errors, fn issue ->
-        issue.type == :invalid_child_template
-      end)
+      error =
+        Enum.find(result.errors, fn issue ->
+          issue.type == :invalid_child_template
+        end)
 
       assert error != nil
       assert error.path =~ "02-gallery.slides/"
@@ -194,7 +215,11 @@ defmodule Brix.ValidatorTest do
     test "errors when collection parent references nonexistent collection" do
       result = Validator.validate(@bad_collections)
 
-      assert has_error?(result, :unresolved_reference, ~r/parent "nonexistent-collection" not found/)
+      assert has_error?(
+               result,
+               :unresolved_reference,
+               ~r/parent "nonexistent-collection" not found/
+             )
     end
 
     test "errors on circular parent references" do
@@ -226,9 +251,10 @@ defmodule Brix.ValidatorTest do
       dummy = Path.expand("../fixtures/dummy", __DIR__)
       result = Validator.validate(dummy)
 
-      collection_errors = Enum.filter(result.errors, fn issue ->
-        String.starts_with?(issue.path, "collections/")
-      end)
+      collection_errors =
+        Enum.filter(result.errors, fn issue ->
+          String.starts_with?(issue.path, "collections/")
+        end)
 
       assert collection_errors == []
     end

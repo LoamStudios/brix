@@ -1,7 +1,20 @@
 defmodule Brix.ReaderTest do
   use ExUnit.Case, async: true
 
-  alias Brix.{Reader, Site, Author, Tag, Media, SectionTemplate, Section, SharedSection, Layout, Page, Collection}
+  alias Brix.{
+    Reader,
+    Site,
+    Author,
+    Tag,
+    Media,
+    SectionTemplate,
+    Section,
+    SharedSection,
+    Layout,
+    Page,
+    Collection
+  }
+
   alias Brix.Collection.{FilterGroup, Condition}
 
   @fixtures Path.expand("../fixtures/valid", __DIR__)
@@ -239,9 +252,10 @@ defmodule Brix.ReaderTest do
       pages = Reader.read_pages(@dummy)
       ritual = Enum.find(pages, &(&1.slug == "/blog/morning-ritual"))
 
-      draft = Enum.find(ritual.versions, fn v ->
-        v.version == ~U[2024-11-15 14:00:00Z]
-      end)
+      draft =
+        Enum.find(ritual.versions, fn v ->
+          v.version == ~U[2024-11-15 14:00:00Z]
+        end)
 
       assert draft.published_at == nil
       assert draft.updated_at == ~U[2024-11-15 14:00:00Z]
@@ -341,7 +355,11 @@ defmodule Brix.ReaderTest do
       }
 
       sections = [
-        %Section{template: :shared_ref, position: 1, fields: %{"__shared_section_ref" => "main-nav"}},
+        %Section{
+          template: :shared_ref,
+          position: 1,
+          fields: %{"__shared_section_ref" => "main-nav"}
+        },
         %Section{template: "hero", position: 2, fields: %{"heading" => "Hello"}}
       ]
 
@@ -355,7 +373,11 @@ defmodule Brix.ReaderTest do
 
     test "leaves unresolved references intact" do
       sections = [
-        %Section{template: :shared_ref, position: 1, fields: %{"__shared_section_ref" => "missing"}}
+        %Section{
+          template: :shared_ref,
+          position: 1,
+          fields: %{"__shared_section_ref" => "missing"}
+        }
       ]
 
       resolved = Reader.resolve_sections(sections, %{})

@@ -5,7 +5,20 @@ defmodule Brix.Reader do
   All functions take a `content_dir` path as the root of the content tree.
   """
 
-  alias Brix.{Site, Author, Tag, Media, SectionTemplate, Section, SharedSection, Layout, Page, Version, Collection}
+  alias Brix.{
+    Site,
+    Author,
+    Tag,
+    Media,
+    SectionTemplate,
+    Section,
+    SharedSection,
+    Layout,
+    Page,
+    Version,
+    Collection
+  }
+
   alias Brix.Collection.{FilterGroup, Condition}
 
   # --- Site ---
@@ -528,6 +541,7 @@ defmodule Brix.Reader do
       case read_yaml(version_yml_path) do
         {:ok, data} ->
           {parse_datetime(data["published_at"]), parse_datetime(data["updated_at"])}
+
         {:error, _} ->
           {nil, nil}
       end
@@ -555,7 +569,9 @@ defmodule Brix.Reader do
   Resolves shared section references in a list of sections.
   Takes a map of shared section name => %SharedSection{}.
   """
-  @spec resolve_sections([Brix.Section.t()], %{String.t() => Brix.SharedSection.t()}) :: [Brix.Section.t()]
+  @spec resolve_sections([Brix.Section.t()], %{String.t() => Brix.SharedSection.t()}) :: [
+          Brix.Section.t()
+        ]
   def resolve_sections(sections, shared_map) do
     Enum.map(sections, fn %Section{} = section ->
       resolved =
@@ -601,9 +617,7 @@ defmodule Brix.Reader do
   def parse_compact_iso(name) when is_binary(name) do
     case Regex.run(~r/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/, name) do
       [_, y, mo, d, h, mi, s] ->
-        {:ok, dt, _} = DateTime.from_iso8601(
-          "#{y}-#{mo}-#{d}T#{h}:#{mi}:#{s}Z"
-        )
+        {:ok, dt, _} = DateTime.from_iso8601("#{y}-#{mo}-#{d}T#{h}:#{mi}:#{s}Z")
         dt
 
       nil ->
@@ -628,7 +642,9 @@ defmodule Brix.Reader do
 
   defp parse_datetime(str) when is_binary(str) do
     case DateTime.from_iso8601(str) do
-      {:ok, dt, _offset} -> dt
+      {:ok, dt, _offset} ->
+        dt
+
       {:error, _} ->
         # Try date-only format, treat as midnight UTC
         case Date.from_iso8601(str) do

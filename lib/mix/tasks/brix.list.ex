@@ -144,12 +144,14 @@ defmodule Mix.Tasks.Brix.List do
       # Check for children directory
       base = Path.rootname(entry)
       children_dir = Path.join(sections_dir, "#{base}.children")
-      children_info = if File.dir?(children_dir) do
-        count = children_dir |> File.ls!() |> Enum.count(&String.ends_with?(&1, ".yml"))
-        " (#{count} children)"
-      else
-        ""
-      end
+
+      children_info =
+        if File.dir?(children_dir) do
+          count = children_dir |> File.ls!() |> Enum.count(&String.ends_with?(&1, ".yml"))
+          " (#{count} children)"
+        else
+          ""
+        end
 
       Mix.shell().info("  #{entry}")
       Mix.shell().info("    template: #{template}#{children_info}")

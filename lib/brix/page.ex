@@ -4,11 +4,25 @@ defmodule Brix.Page do
   to a layout, authors, and tags.
   """
 
-  defstruct [:slug, :title, :meta_title, :meta_description,
-             :og_title, :og_description, :og_image,
-             :layout, :sections, :authors, :tags,
-             :published_at, :updated_at, :published_version,
-             :versions, :slug_history, :extra]
+  defstruct [
+    :slug,
+    :title,
+    :meta_title,
+    :meta_description,
+    :og_title,
+    :og_description,
+    :og_image,
+    :layout,
+    :sections,
+    :authors,
+    :tags,
+    :published_at,
+    :updated_at,
+    :published_version,
+    :versions,
+    :slug_history,
+    :extra
+  ]
 
   @type t :: %__MODULE__{
           slug: String.t() | nil,

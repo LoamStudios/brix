@@ -72,25 +72,31 @@ defmodule Brix.Collection.FilterEngine do
 
   defp evaluate_condition(page, %Condition{type: :published_after, value: values}) do
     case page.published_at do
-      nil -> false
-      published_at -> Enum.all?(values, fn v ->
-        case parse_datetime(v) do
-          nil -> true
-          dt -> DateTime.compare(published_at, dt) != :lt
-        end
-      end)
+      nil ->
+        false
+
+      published_at ->
+        Enum.all?(values, fn v ->
+          case parse_datetime(v) do
+            nil -> true
+            dt -> DateTime.compare(published_at, dt) != :lt
+          end
+        end)
     end
   end
 
   defp evaluate_condition(page, %Condition{type: :published_before, value: values}) do
     case page.published_at do
-      nil -> false
-      published_at -> Enum.all?(values, fn v ->
-        case parse_datetime(v) do
-          nil -> true
-          dt -> DateTime.compare(published_at, dt) != :gt
-        end
-      end)
+      nil ->
+        false
+
+      published_at ->
+        Enum.all?(values, fn v ->
+          case parse_datetime(v) do
+            nil -> true
+            dt -> DateTime.compare(published_at, dt) != :gt
+          end
+        end)
     end
   end
 
@@ -98,7 +104,9 @@ defmodule Brix.Collection.FilterEngine do
 
   defp parse_datetime(str) when is_binary(str) do
     case DateTime.from_iso8601(str) do
-      {:ok, dt, _} -> dt
+      {:ok, dt, _} ->
+        dt
+
       {:error, _} ->
         case Date.from_iso8601(str) do
           {:ok, date} -> DateTime.new!(date, ~T[00:00:00], "Etc/UTC")

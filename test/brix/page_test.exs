@@ -67,8 +67,19 @@ defmodule Brix.PageTest do
       title: "The Morning Ritual",
       meta_description: "A guide to brewing better coffee at home.",
       sections: [
-        %Section{template: "hero", position: 1, fields: %{"heading" => "Rise and Grind", "subheading" => "Every day starts here"}},
-        %Section{template: "richtext", position: 2, fields: %{"body" => "<p>French press is <strong>forgiving</strong> and produces a full-bodied cup.</p>"}}
+        %Section{
+          template: "hero",
+          position: 1,
+          fields: %{"heading" => "Rise and Grind", "subheading" => "Every day starts here"}
+        },
+        %Section{
+          template: "richtext",
+          position: 2,
+          fields: %{
+            "body" =>
+              "<p>French press is <strong>forgiving</strong> and produces a full-bodied cup.</p>"
+          }
+        }
       ]
     }
 
@@ -120,7 +131,10 @@ defmodule Brix.PageTest do
         %Section{
           template: "richtext",
           position: 2,
-          fields: %{"body" => "<p>French press is forgiving and produces a full-bodied cup. The grind matters more than the beans.</p>"}
+          fields: %{
+            "body" =>
+              "<p>French press is forgiving and produces a full-bodied cup. The grind matters more than the beans.</p>"
+          }
         }
       ]
     }
@@ -145,7 +159,11 @@ defmodule Brix.PageTest do
     test "defaults to 200 characters" do
       page = %Page{
         sections: [
-          %Section{template: "richtext", position: 1, fields: %{"body" => String.duplicate("word ", 100)}}
+          %Section{
+            template: "richtext",
+            position: 1,
+            fields: %{"body" => String.duplicate("word ", 100)}
+          }
         ]
       }
 
@@ -200,7 +218,11 @@ defmodule Brix.PageTest do
             fields: %{"title" => "Photos"},
             children: %{
               "slides" => [
-                %Section{template: "slide", position: 1, fields: %{"heading" => "Beautiful Sunset"}}
+                %Section{
+                  template: "slide",
+                  position: 1,
+                  fields: %{"heading" => "Beautiful Sunset"}
+                }
               ]
             }
           }

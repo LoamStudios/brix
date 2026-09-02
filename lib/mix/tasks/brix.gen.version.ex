@@ -32,7 +32,9 @@ defmodule Mix.Tasks.Brix.Gen.Version do
 
     slug =
       case remaining do
-        [slug | _] -> slug
+        [slug | _] ->
+          slug
+
         [] ->
           Mix.shell().error("Usage: mix brix.gen.version SLUG")
           exit({:shutdown, 1})
@@ -110,7 +112,9 @@ defmodule Mix.Tasks.Brix.Gen.Version do
         case data["published_version"] do
           nil ->
             case Brix.Gen.latest_version(page_dir) do
-              {_name, dir} -> dir
+              {_name, dir} ->
+                dir
+
               nil ->
                 Mix.shell().error("No versions to copy from")
                 exit({:shutdown, 1})

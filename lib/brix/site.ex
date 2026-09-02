@@ -3,8 +3,16 @@ defmodule Brix.Site do
   Site-wide settings: name, metadata, SEO defaults.
   """
 
-  defstruct [:name, :tagline, :meta_title, :meta_description,
-             :og_image, :favicon, :domain, :extra]
+  defstruct [
+    :name,
+    :tagline,
+    :meta_title,
+    :meta_description,
+    :og_image,
+    :favicon,
+    :domain,
+    :extra
+  ]
 
   @type t :: %__MODULE__{
           name: String.t() | nil,

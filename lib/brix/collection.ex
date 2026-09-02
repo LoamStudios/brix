@@ -31,11 +31,24 @@ defmodule Brix.Collection do
 
   alias Brix.Collection.FilterGroup
 
-  defstruct [:slug, :name, :description, :parent, :published_at,
-             :filters, :filter_groups, :sort_by, :sort_direction,
-             :meta_title, :meta_description,
-             :og_title, :og_description, :og_image, :extra,
-             group_logic: :and]
+  defstruct [
+    :slug,
+    :name,
+    :description,
+    :parent,
+    :published_at,
+    :filters,
+    :filter_groups,
+    :sort_by,
+    :sort_direction,
+    :meta_title,
+    :meta_description,
+    :og_title,
+    :og_description,
+    :og_image,
+    :extra,
+    group_logic: :and
+  ]
 
   @type t :: %__MODULE__{
           slug: String.t() | nil,

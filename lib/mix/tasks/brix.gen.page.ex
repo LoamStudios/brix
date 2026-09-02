@@ -27,7 +27,9 @@ defmodule Mix.Tasks.Brix.Gen.Page do
 
     slug =
       case remaining do
-        [slug | _] -> slug
+        [slug | _] ->
+          slug
+
         [] ->
           Mix.shell().error("Usage: mix brix.gen.page SLUG")
           exit({:shutdown, 1})
@@ -54,7 +56,9 @@ defmodule Mix.Tasks.Brix.Gen.Page do
     # Build page.yml content
     page_pairs = [{"slug", slug}, {"title", title}]
     page_pairs = if layout, do: page_pairs ++ [{"layout", layout}], else: page_pairs
-    page_pairs = if no_publish, do: page_pairs, else: page_pairs ++ [{"published_version", timestamp}]
+
+    page_pairs =
+      if no_publish, do: page_pairs, else: page_pairs ++ [{"published_version", timestamp}]
 
     # Build version.yml content
     now_iso = DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.to_iso8601()

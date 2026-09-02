@@ -65,10 +65,11 @@ defmodule Brix.RenderTest do
         %Section{template: "richtext", position: 2, fields: %{"body" => "<p>World</p>"}}
       ]
 
-      html = render_component(&Render.sections/1,
-        sections: sections,
-        module: TestSections
-      )
+      html =
+        render_component(&Render.sections/1,
+          sections: sections,
+          module: TestSections
+        )
 
       assert html =~ "<h1>Hello</h1>"
       assert html =~ "<p>World</p>"
@@ -83,11 +84,14 @@ defmodule Brix.RenderTest do
         footer_sections: [%Section{template: "footer", position: 1, fields: %{}}]
       }
 
-      html = render_component(&Render.layout/1,
-        layout: layout,
-        module: TestSections,
-        inner_block: [%{__slot__: :inner_block, inner_block: fn _args, _caller -> "page content" end}]
-      )
+      html =
+        render_component(&Render.layout/1,
+          layout: layout,
+          module: TestSections,
+          inner_block: [
+            %{__slot__: :inner_block, inner_block: fn _args, _caller -> "page content" end}
+          ]
+        )
 
       assert html =~ "nav"
       assert html =~ "footer"
@@ -108,10 +112,11 @@ defmodule Brix.RenderTest do
         children: %{"slides" => slides}
       }
 
-      html = render_component(&Render.sections/1,
-        sections: [gallery],
-        module: TestSections
-      )
+      html =
+        render_component(&Render.sections/1,
+          sections: [gallery],
+          module: TestSections
+        )
 
       assert html =~ "My Gallery"
       assert html =~ "Slide 1"
@@ -126,10 +131,11 @@ defmodule Brix.RenderTest do
         children: %{}
       }
 
-      html = render_component(&Render.sections/1,
-        sections: [gallery],
-        module: TestSections
-      )
+      html =
+        render_component(&Render.sections/1,
+          sections: [gallery],
+          module: TestSections
+        )
 
       assert html =~ "Empty Gallery"
       refute html =~ "Slide"
@@ -140,16 +146,19 @@ defmodule Brix.RenderTest do
         template: "gallery",
         position: 1,
         fields: %{"title" => "Test"},
-        children: %{"slides" => [
-          %Section{template: "slide", position: 1, fields: %{"heading" => "S1"}}
-        ]}
+        children: %{
+          "slides" => [
+            %Section{template: "slide", position: 1, fields: %{"heading" => "S1"}}
+          ]
+        }
       }
 
       # Render through the sections component to get full HTML
-      html = render_component(&Render.sections/1,
-        sections: [section],
-        module: TestSections
-      )
+      html =
+        render_component(&Render.sections/1,
+          sections: [section],
+          module: TestSections
+        )
 
       assert html =~ "Test"
       assert html =~ "S1"
@@ -160,10 +169,11 @@ defmodule Brix.RenderTest do
         %Section{template: "hero", position: 1, fields: %{"heading" => "Works"}}
       ]
 
-      html = render_component(&Render.sections/1,
-        sections: sections,
-        module: TestSections
-      )
+      html =
+        render_component(&Render.sections/1,
+          sections: sections,
+          module: TestSections
+        )
 
       assert html =~ "Works"
     end

@@ -69,14 +69,17 @@ defmodule Brix.Store.FilesystemTest do
     end
 
     test "returns specific version when version: option given" do
-      assert {:ok, page} = Filesystem.get_page("/blog/morning-ritual", version: ~U[2024-11-15 14:00:00Z])
+      assert {:ok, page} =
+               Filesystem.get_page("/blog/morning-ritual", version: ~U[2024-11-15 14:00:00Z])
+
       assert length(page.sections) == 3
       hero = hd(page.sections)
       assert hero.fields["heading"] == "The Morning Ritual (Updated)"
     end
 
     test "returns :error for nonexistent version" do
-      assert :error = Filesystem.get_page("/blog/morning-ritual", version: ~U[2099-01-01 00:00:00Z])
+      assert :error =
+               Filesystem.get_page("/blog/morning-ritual", version: ~U[2099-01-01 00:00:00Z])
     end
 
     test "returns :error for nonexistent slug with version" do
@@ -96,7 +99,9 @@ defmodule Brix.Store.FilesystemTest do
     end
 
     test "version selection swaps sections and timestamps" do
-      assert {:ok, page} = Filesystem.get_page("/blog/morning-ritual", version: ~U[2024-11-15 14:00:00Z])
+      assert {:ok, page} =
+               Filesystem.get_page("/blog/morning-ritual", version: ~U[2024-11-15 14:00:00Z])
+
       # Draft version has no published_at
       assert page.published_at == nil
       assert page.updated_at == ~U[2024-11-15 14:00:00Z]
@@ -279,7 +284,15 @@ defmodule Brix.Store.FilesystemTest do
     test "filter by tag shared across pages" do
       pages = Filesystem.list_pages(tag: "coffee", status: :all)
       slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
-      assert slugs == ["/", "/about", "/blog/morning-ritual", "/blog/upcoming-roast", "/careers", "/menu"]
+
+      assert slugs == [
+               "/",
+               "/about",
+               "/blog/morning-ritual",
+               "/blog/upcoming-roast",
+               "/careers",
+               "/menu"
+             ]
     end
 
     test "filter by author" do
@@ -374,6 +387,7 @@ defmodule Brix.Store.FilesystemTest do
     test "status: :published returns only published pages" do
       pages = Filesystem.list_pages(status: :published)
       slugs = Enum.map(pages, & &1.slug) |> Enum.sort()
+
       # Home, About, Menu, Morning Ritual are in the past. Upcoming Roast is 2099. Careers has no published_at.
       assert "/" in slugs
       assert "/about" in slugs

@@ -43,9 +43,14 @@ defmodule Brix.Collection.FilterEngineTest do
 
   describe "single condition" do
     test "tag condition matches pages with that tag" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :tag, value: ["coffee"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :tag, value: ["coffee"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       slugs = Enum.map(result, & &1.slug)
@@ -56,9 +61,14 @@ defmodule Brix.Collection.FilterEngineTest do
     end
 
     test "author condition matches pages with that author" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :author, value: ["jeff"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :author, value: ["jeff"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       slugs = Enum.map(result, & &1.slug)
@@ -69,9 +79,14 @@ defmodule Brix.Collection.FilterEngineTest do
     end
 
     test "prefix condition matches page slugs" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :prefix, value: ["/blog/"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :prefix, value: ["/blog/"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       slugs = Enum.map(result, & &1.slug)
@@ -82,18 +97,28 @@ defmodule Brix.Collection.FilterEngineTest do
     end
 
     test "prefix without trailing slash still works" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :prefix, value: ["/blog"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :prefix, value: ["/blog"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert length(result) == 2
     end
 
     test "status published matches only published pages" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :status, value: ["published"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :status, value: ["published"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       slugs = Enum.map(result, & &1.slug)
@@ -104,18 +129,28 @@ defmodule Brix.Collection.FilterEngineTest do
     end
 
     test "status draft matches only draft pages" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :status, value: ["draft"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :status, value: ["draft"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert [%Page{slug: "/blog/draft"}] = result
     end
 
     test "published_after filters by date" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :published_after, value: ["2024-01-01"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :published_after, value: ["2024-01-01"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       slugs = Enum.map(result, & &1.slug)
@@ -126,18 +161,28 @@ defmodule Brix.Collection.FilterEngineTest do
     end
 
     test "published_before filters by date" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :published_before, value: ["2024-01-01"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :published_before, value: ["2024-01-01"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert [%Page{slug: "/articles/old"}] = result
     end
 
     test "published_after with ISO datetime" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :published_after, value: ["2024-06-15T10:00:00Z"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :published_after, value: ["2024-06-15T10:00:00Z"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert [%Page{slug: "/blog/coffee"}] = result
@@ -146,9 +191,14 @@ defmodule Brix.Collection.FilterEngineTest do
 
   describe "multi-value conditions" do
     test "tag with multiple values matches any" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :tag, value: ["tea", "brewing"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :tag, value: ["tea", "brewing"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       slugs = Enum.map(result, & &1.slug)
@@ -159,18 +209,28 @@ defmodule Brix.Collection.FilterEngineTest do
     end
 
     test "author with multiple values matches any" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :author, value: ["maya", "jeff"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :author, value: ["maya", "jeff"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert length(result) == 3
     end
 
     test "prefix with multiple values matches any" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :prefix, value: ["/blog/", "/articles/"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :prefix, value: ["/blog/", "/articles/"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert length(result) == 3
@@ -179,10 +239,15 @@ defmodule Brix.Collection.FilterEngineTest do
 
   describe "AND group logic" do
     test "all conditions must match within an AND group" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :tag, value: ["coffee"]},
-        %Condition{type: :author, value: ["maya"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :tag, value: ["coffee"]},
+            %Condition{type: :author, value: ["maya"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       slugs = Enum.map(result, & &1.slug)
@@ -193,10 +258,15 @@ defmodule Brix.Collection.FilterEngineTest do
     end
 
     test "AND group with prefix and tag" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :prefix, value: ["/blog/"]},
-        %Condition{type: :tag, value: ["coffee"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :prefix, value: ["/blog/"]},
+            %Condition{type: :tag, value: ["coffee"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert [%Page{slug: "/blog/coffee"}] = result
@@ -205,10 +275,15 @@ defmodule Brix.Collection.FilterEngineTest do
 
   describe "OR group logic" do
     test "any condition can match within an OR group" do
-      groups = [%FilterGroup{logic: :or, conditions: [
-        %Condition{type: :tag, value: ["tea"]},
-        %Condition{type: :prefix, value: ["/articles/"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :or,
+          conditions: [
+            %Condition{type: :tag, value: ["tea"]},
+            %Condition{type: :prefix, value: ["/articles/"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       slugs = Enum.map(result, & &1.slug)
@@ -222,12 +297,18 @@ defmodule Brix.Collection.FilterEngineTest do
   describe "multiple groups with group_logic" do
     test "group_logic :and requires all groups to pass" do
       groups = [
-        %FilterGroup{logic: :and, conditions: [
-          %Condition{type: :tag, value: ["coffee"]}
-        ]},
-        %FilterGroup{logic: :and, conditions: [
-          %Condition{type: :prefix, value: ["/blog/"]}
-        ]}
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :tag, value: ["coffee"]}
+          ]
+        },
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :prefix, value: ["/blog/"]}
+          ]
+        }
       ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
@@ -236,12 +317,18 @@ defmodule Brix.Collection.FilterEngineTest do
 
     test "group_logic :or requires any group to pass" do
       groups = [
-        %FilterGroup{logic: :and, conditions: [
-          %Condition{type: :tag, value: ["tea"]}
-        ]},
-        %FilterGroup{logic: :and, conditions: [
-          %Condition{type: :prefix, value: ["/articles/"]}
-        ]}
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :tag, value: ["tea"]}
+          ]
+        },
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :prefix, value: ["/articles/"]}
+          ]
+        }
       ]
 
       result = FilterEngine.evaluate(@pages, groups, :or)
@@ -255,10 +342,15 @@ defmodule Brix.Collection.FilterEngineTest do
 
   describe "date range" do
     test "published_after and published_before combine for a date range" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :published_after, value: ["2024-01-01"]},
-        %Condition{type: :published_before, value: ["2024-12-31"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :published_after, value: ["2024-01-01"]},
+            %Condition{type: :published_before, value: ["2024-12-31"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert [%Page{slug: "/blog/coffee"}] = result
@@ -267,9 +359,14 @@ defmodule Brix.Collection.FilterEngineTest do
 
   describe "edge cases" do
     test "unknown condition type passes through" do
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :unknown, value: ["whatever"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :unknown, value: ["whatever"]}
+          ]
+        }
+      ]
 
       result = FilterEngine.evaluate(@pages, groups, :and)
       assert length(result) == 3
@@ -278,9 +375,14 @@ defmodule Brix.Collection.FilterEngineTest do
     test "page with nil tags doesn't crash on tag condition" do
       page = %Page{slug: "/bare", tags: nil, authors: nil, published_at: nil}
 
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :tag, value: ["coffee"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :tag, value: ["coffee"]}
+          ]
+        }
+      ]
 
       assert FilterEngine.evaluate([page], groups, :and) == []
     end
@@ -288,9 +390,14 @@ defmodule Brix.Collection.FilterEngineTest do
     test "page with nil authors doesn't crash on author condition" do
       page = %Page{slug: "/bare", tags: nil, authors: nil, published_at: nil}
 
-      groups = [%FilterGroup{logic: :and, conditions: [
-        %Condition{type: :author, value: ["maya"]}
-      ]}]
+      groups = [
+        %FilterGroup{
+          logic: :and,
+          conditions: [
+            %Condition{type: :author, value: ["maya"]}
+          ]
+        }
+      ]
 
       assert FilterEngine.evaluate([page], groups, :and) == []
     end

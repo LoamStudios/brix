@@ -173,8 +173,12 @@ defmodule Brix.Validator do
       if page.published_version in version_ids do
         result
       else
-        add_error(result, page_path, :unresolved_reference,
-          "published_version references nonexistent version")
+        add_error(
+          result,
+          page_path,
+          :unresolved_reference,
+          "published_version references nonexistent version"
+        )
       end
     else
       result
@@ -286,10 +290,21 @@ defmodule Brix.Validator do
       Enum.reduce(page.versions || [], acc, fn version, ver_acc ->
         Enum.reduce(version.sections, ver_acc, fn section, inner_acc ->
           case Map.get(templates_by_name, section.template) do
-            nil -> inner_acc  # template ref error already caught
+            # template ref error already caught
+            nil ->
+              inner_acc
+
             template ->
               section_path = version_section_file_path(page, version, section)
-              validate_section_recursive(inner_acc, section_path, section, template, index, templates_by_name)
+
+              validate_section_recursive(
+                inner_acc,
+                section_path,
+                section,
+                template,
+                index,
+                templates_by_name
+              )
           end
         end)
       end)
@@ -318,8 +333,12 @@ defmodule Brix.Validator do
       if Map.has_key?(fields, name) do
         acc
       else
-        add_error(acc, path, :missing_required_field,
-          "missing required field \"#{name}\" (template: #{template.name})")
+        add_error(
+          acc,
+          path,
+          :missing_required_field,
+          "missing required field \"#{name}\" (template: #{template.name})"
+        )
       end
     end)
   end
@@ -333,8 +352,12 @@ defmodule Brix.Validator do
       if children != [] do
         acc
       else
-        add_error(acc, path, :missing_required_field,
-          "missing required field \"#{name}\" (template: #{template.name})")
+        add_error(
+          acc,
+          path,
+          :missing_required_field,
+          "missing required field \"#{name}\" (template: #{template.name})"
+        )
       end
     end)
   end
@@ -346,7 +369,8 @@ defmodule Brix.Validator do
       field_def = Map.get(template.fields, field_name)
 
       Enum.reduce(child_sections, acc, fn child, inner_acc ->
-        child_path = "#{path}.#{field_name}/#{String.pad_leading(to_string(child.position), 2, "0")}-#{child.template}"
+        child_path =
+          "#{path}.#{field_name}/#{String.pad_leading(to_string(child.position), 2, "0")}-#{child.template}"
 
         # Check of constraint
         inner_acc =
@@ -355,8 +379,13 @@ defmodule Brix.Validator do
               inner_acc
             else
               allowed = Enum.join(field_def.of, ", ")
-              add_error(inner_acc, child_path, :invalid_child_template,
-                "template \"#{child.template}\" not allowed here (allowed: #{allowed})")
+
+              add_error(
+                inner_acc,
+                child_path,
+                :invalid_child_template,
+                "template \"#{child.template}\" not allowed here (allowed: #{allowed})"
+              )
             end
           else
             inner_acc
@@ -364,9 +393,18 @@ defmodule Brix.Validator do
 
         # Recursively validate child
         case Map.get(templates_by_name, child.template) do
-          nil -> inner_acc
+          nil ->
+            inner_acc
+
           child_template ->
-            validate_section_recursive(inner_acc, child_path, child, child_template, index, templates_by_name)
+            validate_section_recursive(
+              inner_acc,
+              child_path,
+              child,
+              child_template,
+              index,
+              templates_by_name
+            )
         end
       end)
     end)
@@ -385,8 +423,12 @@ defmodule Brix.Validator do
       if MapSet.member?(sections_fields, field_name) do
         acc
       else
-        add_warning(acc, path, :unexpected_children,
-          "children directory \"#{field_name}\" has no matching sections field (template: #{template.name})")
+        add_warning(
+          acc,
+          path,
+          :unexpected_children,
+          "children directory \"#{field_name}\" has no matching sections field (template: #{template.name})"
+        )
       end
     end)
   end
@@ -394,7 +436,8 @@ defmodule Brix.Validator do
   defp check_field_types(result, path, fields, template, index) do
     Enum.reduce(fields, result, fn {name, value}, acc ->
       case Map.get(template.fields, name) do
-        nil -> acc  # unknown field, handled by check_unknown_fields
+        # unknown field, handled by check_unknown_fields
+        nil -> acc
         field_def -> validate_type(acc, path, name, value, field_def, index)
       end
     end)
@@ -402,51 +445,88 @@ defmodule Brix.Validator do
 
   defp validate_type(result, path, name, value, field_def, index) do
     case field_def.type do
-      :string -> result  # anything is a valid string
-      :richtext -> result  # validated structurally via .md files
+      # anything is a valid string
+      :string ->
+        result
+
+      # validated structurally via .md files
+      :richtext ->
+        result
+
       :media ->
         if is_binary(value) and MapSet.member?(index.media, value) do
           result
         else
-          add_error(result, path, :unresolved_reference,
-            "media \"#{value}\" not found in field \"#{name}\"")
+          add_error(
+            result,
+            path,
+            :unresolved_reference,
+            "media \"#{value}\" not found in field \"#{name}\""
+          )
         end
+
       :integer ->
         if is_integer(value) do
           result
         else
-          add_error(result, path, :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected integer")
+          add_error(
+            result,
+            path,
+            :type_mismatch,
+            "\"#{name}\" has value #{inspect(value)}, expected integer"
+          )
         end
+
       :boolean ->
         if is_boolean(value) do
           result
         else
-          add_error(result, path, :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected boolean")
+          add_error(
+            result,
+            path,
+            :type_mismatch,
+            "\"#{name}\" has value #{inspect(value)}, expected boolean"
+          )
         end
+
       :url ->
         if is_binary(value) and Regex.match?(~r{^(/|https?://|#)}, value) do
           result
         else
-          add_error(result, path, :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected url (must start with /, #, http://, or https://)")
+          add_error(
+            result,
+            path,
+            :type_mismatch,
+            "\"#{name}\" has value #{inspect(value)}, expected url (must start with /, #, http://, or https://)"
+          )
         end
+
       :list ->
         if is_list(value) do
           result
         else
-          add_error(result, path, :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected list")
+          add_error(
+            result,
+            path,
+            :type_mismatch,
+            "\"#{name}\" has value #{inspect(value)}, expected list"
+          )
         end
+
       :map ->
         if is_map(value) do
           result
         else
-          add_error(result, path, :type_mismatch,
-            "\"#{name}\" has value #{inspect(value)}, expected map")
+          add_error(
+            result,
+            path,
+            :type_mismatch,
+            "\"#{name}\" has value #{inspect(value)}, expected map"
+          )
         end
-      _ -> result
+
+      _ ->
+        result
     end
   end
 
@@ -459,10 +539,14 @@ defmodule Brix.Validator do
       else
         suggestion = fuzzy_match(name, MapSet.to_list(known_fields))
 
-        msg = case suggestion do
-          nil -> "unknown field \"#{name}\" (template: #{template.name})"
-          match -> "unknown field \"#{name}\" — did you mean \"#{match}\"? (template: #{template.name})"
-        end
+        msg =
+          case suggestion do
+            nil ->
+              "unknown field \"#{name}\" (template: #{template.name})"
+
+            match ->
+              "unknown field \"#{name}\" — did you mean \"#{match}\"? (template: #{template.name})"
+          end
 
         add_warning(acc, path, :unknown_field, msg)
       end
@@ -502,8 +586,7 @@ defmodule Brix.Validator do
     if MapSet.member?(collection_slugs, collection.parent) do
       result
     else
-      add_error(result, path, :unresolved_reference,
-        "parent \"#{collection.parent}\" not found")
+      add_error(result, path, :unresolved_reference, "parent \"#{collection.parent}\" not found")
     end
   end
 
@@ -513,8 +596,12 @@ defmodule Brix.Validator do
     by_slug = Map.new(collections, &{&1.slug, &1})
 
     if circular_parent?(collection.slug, collection.parent, by_slug, MapSet.new()) do
-      add_error(result, path, :circular_reference,
-        "circular parent reference detected (#{collection.slug} -> #{collection.parent})")
+      add_error(
+        result,
+        path,
+        :circular_reference,
+        "circular parent reference detected (#{collection.slug} -> #{collection.parent})"
+      )
     else
       result
     end
@@ -524,12 +611,24 @@ defmodule Brix.Validator do
 
   defp circular_parent?(origin, current_slug, by_slug, visited) do
     cond do
-      current_slug == origin -> true
-      MapSet.member?(visited, current_slug) -> false
+      current_slug == origin ->
+        true
+
+      MapSet.member?(visited, current_slug) ->
+        false
+
       true ->
         case Map.get(by_slug, current_slug) do
-          nil -> false
-          collection -> circular_parent?(origin, collection.parent, by_slug, MapSet.put(visited, current_slug))
+          nil ->
+            false
+
+          collection ->
+            circular_parent?(
+              origin,
+              collection.parent,
+              by_slug,
+              MapSet.put(visited, current_slug)
+            )
         end
     end
   end
@@ -540,15 +639,23 @@ defmodule Brix.Validator do
   defp check_collection_filter_groups(result, path, collection) do
     Enum.reduce(collection.filter_groups, result, fn group, acc ->
       unless group.logic in [:and, :or] do
-        add_error(acc, path, :invalid_filter_group,
-          "filter group logic must be \"and\" or \"or\", got: #{inspect(group.logic)}")
+        add_error(
+          acc,
+          path,
+          :invalid_filter_group,
+          "filter group logic must be \"and\" or \"or\", got: #{inspect(group.logic)}"
+        )
       else
         Enum.reduce(group.conditions, acc, fn condition, inner_acc ->
           if condition.type in Condition.valid_types() do
             inner_acc
           else
-            add_error(inner_acc, path, :invalid_condition_type,
-              "unknown condition type \"#{condition.type}\" (valid: #{Condition.valid_types() |> Enum.join(", ")})")
+            add_error(
+              inner_acc,
+              path,
+              :invalid_condition_type,
+              "unknown condition type \"#{condition.type}\" (valid: #{Condition.valid_types() |> Enum.join(", ")})"
+            )
           end
         end)
       end
@@ -581,19 +688,21 @@ defmodule Brix.Validator do
   # --- Path helpers ---
 
   defp page_yml_path(page, _content_dir) do
-    slug_to_dir = case page.slug do
-      "/" -> "index"
-      slug -> String.trim_leading(slug, "/")
-    end
+    slug_to_dir =
+      case page.slug do
+        "/" -> "index"
+        slug -> String.trim_leading(slug, "/")
+      end
 
     "pages/#{slug_to_dir}/page.yml"
   end
 
   defp version_section_file_path(page, version, section) do
-    slug_to_dir = case page.slug do
-      "/" -> "index"
-      slug -> String.trim_leading(slug, "/")
-    end
+    slug_to_dir =
+      case page.slug do
+        "/" -> "index"
+        slug -> String.trim_leading(slug, "/")
+      end
 
     version_name = Reader.format_compact_iso(version.version)
 
