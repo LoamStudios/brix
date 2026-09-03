@@ -140,19 +140,19 @@ defmodule Brix.PageTest do
     }
 
     test "returns plain text from sections with HTML stripped" do
-      excerpt = Page.excerpt(@long_page, 500)
+      excerpt = Page.excerpt(@long_page, length: 500, fields: ["body"])
       refute excerpt =~ "<p>"
       assert excerpt =~ "French press"
     end
 
     test "truncates to specified length on a word boundary" do
-      excerpt = Page.excerpt(@long_page, 30)
+      excerpt = Page.excerpt(@long_page, length: 30, fields: ["body"])
       assert String.ends_with?(excerpt, "…")
       assert String.length(excerpt) <= 35
     end
 
     test "does not truncate when content is shorter than length" do
-      excerpt = Page.excerpt(@long_page, 500)
+      excerpt = Page.excerpt(@long_page, length: 500, fields: ["body"])
       refute String.ends_with?(excerpt, "…")
     end
 
@@ -167,13 +167,39 @@ defmodule Brix.PageTest do
         ]
       }
 
-      excerpt = Page.excerpt(page)
+      excerpt = Page.excerpt(page, fields: ["body"])
       assert String.ends_with?(excerpt, "…")
       assert String.length(excerpt) <= 205
     end
 
     test "handles page with nil sections" do
       assert Page.excerpt(%Page{}) == ""
+    end
+
+    test "explicit fields ignore every other string field" do
+      excerpt = Page.excerpt(@long_page, length: 500, fields: ["body"])
+      refute excerpt =~ "Hello"
+      assert String.starts_with?(excerpt, "French press")
+    end
+
+    test "explicit fields are read from nested sections" do
+      page = %Page{
+        sections: [
+          %Section{
+            template: "wrapper",
+            position: 1,
+            fields: %{"title" => "Chapters"},
+            children: %{
+              "items" => [
+                %Section{template: "chapter", position: 1, fields: %{"body" => "<p>One.</p>"}},
+                %Section{template: "chapter", position: 2, fields: %{"body" => "<p>Two.</p>"}}
+              ]
+            }
+          }
+        ]
+      }
+
+      assert Page.excerpt(page, fields: ["body"]) == "One. Two."
     end
   end
 
@@ -229,7 +255,7 @@ defmodule Brix.PageTest do
         ]
       }
 
-      excerpt = Page.excerpt(page, 500)
+      excerpt = Page.excerpt(page, length: 500, fields: ["title", "heading"])
       assert excerpt =~ "Photos"
       assert excerpt =~ "Beautiful Sunset"
     end

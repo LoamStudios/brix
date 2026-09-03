@@ -69,16 +69,35 @@ defmodule Brix.Page do
   end
 
   @doc """
-  Returns a plain-text excerpt from the page's section content,
-  truncated to `length` characters (default 200). HTML tags are
-  stripped and whitespace is normalized. Appends "…" when truncated.
+  Returns a plain-text excerpt from the page's prose, truncated to
+  `:length` characters (default 200). HTML tags are stripped and
+  whitespace is normalized. Appends "…" when truncated.
+
+  Only prose fields contribute. By default (`fields: :richtext`) those
+  are the fields the section's template declares as `type: richtext`,
+  looked up through the configured store; sections whose template is
+  unknown contribute nothing. Pass `fields: ["body", "summary"]` to
+  name the prose fields explicitly instead, with no template lookup.
+
+  Sections are walked in order, children depth first.
+
+  An integer second argument is shorthand for `length:`.
   """
-  @spec excerpt(t(), non_neg_integer()) :: String.t()
-  def excerpt(%__MODULE__{} = page, length \\ 200) do
+  @spec excerpt(t(), keyword() | non_neg_integer()) :: String.t()
+  def excerpt(page, opts \\ [])
+
+  def excerpt(%__MODULE__{} = page, length) when is_integer(length) do
+    excerpt(page, length: length)
+  end
+
+  def excerpt(%__MODULE__{} = page, opts) when is_list(opts) do
+    length = Keyword.get(opts, :length, 200)
+    fields = Keyword.get(opts, :fields, :richtext)
+
     text =
       page.sections
       |> List.wrap()
-      |> Enum.flat_map(&section_text/1)
+      |> Enum.flat_map(&prose_text(&1, fields))
       |> Enum.join(" ")
 
     if String.length(text) > length do
@@ -120,6 +139,52 @@ defmodule Brix.Page do
       end)
 
     own_texts ++ child_texts
+  end
+
+  defp prose_text(section, fields) do
+    values = section.fields || %{}
+
+    own_texts =
+      section
+      |> prose_field_names(fields)
+      |> Enum.flat_map(fn name ->
+        case Map.get(values, name) do
+          value when is_binary(value) -> [strip_html(value)]
+          _ -> []
+        end
+      end)
+
+    child_texts =
+      (section.children || %{})
+      |> Enum.flat_map(fn {_field, child_sections} ->
+        Enum.flat_map(child_sections, &prose_text(&1, fields))
+      end)
+
+    own_texts ++ child_texts
+  end
+
+  defp prose_field_names(_section, names) when is_list(names), do: names
+
+  defp prose_field_names(%{template: name}, :richtext) when is_binary(name) do
+    case section_template(name) do
+      {:ok, %{fields: fields}} when is_map(fields) ->
+        fields
+        |> Enum.filter(fn {_name, def} -> def[:type] == :richtext end)
+        |> Enum.map(fn {name, _def} -> name end)
+        |> Enum.sort()
+
+      _ ->
+        []
+    end
+  end
+
+  defp prose_field_names(_section, :richtext), do: []
+
+  defp section_template(name) do
+    case Application.get_env(:brix, :store) do
+      nil -> :error
+      store -> store.get_section_template(name)
+    end
   end
 
   defp strip_html(text) do
