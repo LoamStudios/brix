@@ -12,7 +12,7 @@ No GUI. No database (yet). Files are the authoring interface.
 
 ```elixir
 # mix.exs
-{:brix, "~> 0.1.0"}
+{:brix, "~> 0.1.1"}
 
 # config/config.exs
 config :brix, store: Brix.Store.Filesystem
