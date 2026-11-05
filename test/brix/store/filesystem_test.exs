@@ -591,6 +591,24 @@ defmodule Brix.Store.FilesystemTest do
       assert titles == Enum.sort(titles, :desc)
     end
 
+    test "sorts published_at chronologically, undated pages last" do
+      for direction <- [:asc, :desc] do
+        collection = %Brix.Collection{
+          filter_groups: [],
+          sort_by: "published_at",
+          sort_direction: direction
+        }
+
+        pages = Filesystem.list_collection_pages(collection, status: :all)
+        {dated, undated} = Enum.split_while(pages, & &1.published_at)
+        dates = Enum.map(dated, & &1.published_at)
+
+        assert length(dates) > 1
+        assert dates == Enum.sort(dates, {direction, DateTime})
+        assert Enum.all?(undated, &is_nil(&1.published_at))
+      end
+    end
+
     test "advanced filter_groups collection filters correctly" do
       {:ok, collection} = Filesystem.get_collection("coffee-by-maya")
       pages = Filesystem.list_collection_pages(collection)

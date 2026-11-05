@@ -246,10 +246,20 @@ defmodule Brix.Store.Filesystem do
   defp sort_pages(pages, "title", direction), do: sort_by(pages, & &1.title, direction)
 
   defp sort_pages(pages, "published_at", direction),
-    do: sort_by(pages, & &1.published_at, direction)
+    do: sort_by_datetime(pages, & &1.published_at, direction)
 
-  defp sort_pages(pages, "updated_at", direction), do: sort_by(pages, & &1.updated_at, direction)
+  defp sort_pages(pages, "updated_at", direction),
+    do: sort_by_datetime(pages, & &1.updated_at, direction)
+
   defp sort_pages(pages, _field, _direction), do: pages
+
+  # DateTime structs don't order correctly under term comparison (it reaches
+  # :day before :month and :year), so compare with DateTime. Undated pages
+  # (drafts) go last in either direction.
+  defp sort_by_datetime(pages, key_fn, direction) do
+    {dated, undated} = Enum.split_with(pages, &key_fn.(&1))
+    Enum.sort_by(dated, key_fn, {direction, DateTime}) ++ undated
+  end
 
   defp sort_by(pages, key_fn, :asc), do: Enum.sort_by(pages, key_fn)
   defp sort_by(pages, key_fn, :desc), do: Enum.sort_by(pages, key_fn, :desc)
